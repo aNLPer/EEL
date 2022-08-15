@@ -90,9 +90,11 @@ class gru_ljp():
 
         self.model.to(self.device)
 
-
-
-    def train_base(self):
+    def train_base(self, mode="LSSCL"):
+        """
+        :param mode: ["vanilla", "lsscl", "eval_batch"]
+        :return:
+        """
         # 定义损失函数
         self.criterion = nn.CrossEntropyLoss()
 
@@ -130,7 +132,6 @@ class gru_ljp():
             if step % self.EPOCH == 0:
                 start = time.time()
             seqs, accu_labels, article_labels, penalty_labels = contras_data_loader(accu2case=self.accu2case,
-                                                                                    isremove=False,
                                                                                     batch_size=self.BATCH_SIZE,
                                                                                     lang=self.lang,
                                                                                     positive_size=self.POSITIVE_SIZE,
@@ -163,8 +164,8 @@ class gru_ljp():
                 penalty_preds_outputs.append(penalty_preds)
 
             # charge_vecs的对比误差
-            # contra_outputs = torch.stack(charge_vecs_outputs, dim=0)  # 2 * [batch_size/posi_size, hidden_size] -> [posi_size, batch_size/posi_size, hidden_size]
-            # posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=CHARGE_RADIUS)
+            contra_outputs = torch.stack(charge_vecs_outputs, dim=0)  # 2 * [batch_size/posi_size, hidden_size] -> [posi_size, batch_size/posi_size, hidden_size]
+            posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=CHARGE_RADIUS)
 
             # 指控分类误差
             charge_preds_outputs = torch.cat(charge_preds_outputs,dim=0)  # [posi_size, batch_size/posi_size, label_size] -> [batch_size, label_size]
@@ -284,7 +285,7 @@ class gru_ljp():
                     f"Time: {round((end - start) / 60, 2)}min ")
 
                 # 保存模型
-                save_path = f"../dataset/checkpoints/model-at-epoch-{int((step + 1) / self.EPOCH)}_.pt"
+                save_path = f"../dataset/checkpoints/model-at-epoch-{int((step + 1) / self.EPOCH)}-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}.pt"
                 torch.save(self.model, save_path)
 
                 train_loss = 0
@@ -295,7 +296,7 @@ class gru_ljp():
         valid_mp_records = json.dumps(valid_mp_records, ensure_ascii=False)
         valid_f1_records = json.dumps(valid_f1_records, ensure_ascii=False)
         valid_mr_records = json.dumps(valid_mr_records, ensure_ascii=False)
-        with open(f"../training_records.txt", "w", encoding="utf-8") as f:
+        with open(f"../training_records_{mode}_{self.BATCH_SIZE}_{self.SIM_ACCU_NUM}.txt", "w", encoding="utf-8") as f:
             f.write('train_loss_records\t' + train_loss_records + "\n")
             f.write('valid_loss_records\t' + valid_loss_records + "\n")
             f.write('valid_acc_records\t' + valid_acc_records + "\n")
@@ -306,6 +307,8 @@ class gru_ljp():
 
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    BATCH_SIZE = [16, 32, 64, 128, 256]
+    SIM_ACCU_NUM = [2, 4, 8, 8]
     ljp = gru_ljp(device=device, section="gru-train")
     ljp.train_base()
     print("end")

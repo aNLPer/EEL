@@ -40,6 +40,80 @@ class Bert(nn.Module):
         # [batch_size, hidden_size]、[batch_size, label_size]
         return contra_hidden, classify_preds
 
+class BERTLJP(nn.Module):
+    def __init__(self,
+                 hidden_size, # 隐藏状态size，
+                 charge_label_size,
+                 article_label_size,
+                 penalty_label_size,
+                 mode="concat"):
+
+        super(BERTLJP, self).__init__()
+
+        self.mode = mode
+        self.charge_label_size = charge_label_size
+        self.article_label_size = article_label_size
+        self.penalty_label_size = penalty_label_size
+
+        self.enc = BertModel.from_pretrained("bert-base-chinese",
+                                              num_labels=charge_label_size,
+                                              output_attentions=False,
+                                              output_hidden_states=True)
+
+        self.chargeAwareAtten = CharacAwareAtten(hidden_size, mode)
+
+        self.articleAwareAtten = CharacAwareAtten(hidden_size, mode)
+
+        self.chargeLinear = nn.Sequential(
+            nn.Linear(hidden_size, 4 * hidden_size),
+            nn.BatchNorm1d(4 * hidden_size),
+            nn.ReLU(),
+            nn.Linear(4 * hidden_size, hidden_size)
+        )
+
+        self.chargePreds = nn.Sequential(
+            nn.Linear(hidden_size, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, charge_label_size)
+        )
+
+        self.articlePreds = nn.Sequential(
+            nn.Linear(hidden_size, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, article_label_size)
+        )
+
+        self.penaltyPreds = nn.Sequential(
+            nn.Linear(hidden_size, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, penalty_label_size)
+        )
+
+
+    def forward(self, input_ids, attention_mask):
+        # [batch_size, seq_length, hidden_size]
+        encs = self.enc(input_ids=input_ids, attention_mask=attention_mask)  # encoder 输出
+        # [batch_size, seq_length, hidden_size] -> [batch_size, hidden_size]
+        hidden_state = torch.mean(encs.last_hidden_state, dim=1)
+
+        # [batch_size, hidden_size]
+        charge_vecs = self.chargeLinear(hidden_state)                   # 获取charge_vecs
+        # [batch_size, hidden_size]
+        article_vecs = self.chargeAwareAtten(encs, charge_vecs)          # 获取article_vecs
+        # [batch_size, hidden_size]
+        penalty_vecs = self.articleAwareAtten(encs, article_vecs)        # 获取penalty_vecs
+
+        # [batch_size, charge_label_size]
+        charge_preds = self.chargePreds(charge_vecs)
+        # [batch_size, article_label_size]
+        article_preds = self.articlePreds(article_vecs)
+        # [batch_size, penalty_label_size]
+        penalty_preds = self.penaltyPreds(penalty_vecs)
+        return charge_vecs, charge_preds, article_preds, penalty_preds
+
 class GRULJP(nn.Module):
     def __init__(self,
                  charge_label_size,
@@ -143,80 +217,6 @@ class GRULJP(nn.Module):
         # [batch_size, penalty_label_size]
         penalty_preds = self.penaltyPreds(penalty_vecs)
 
-        return charge_vecs, charge_preds, article_preds, penalty_preds
-
-class BERTLJP(nn.Module):
-    def __init__(self,
-                 hidden_size, # 隐藏状态size，
-                 charge_label_size,
-                 article_label_size,
-                 penalty_label_size,
-                 mode="concat"):
-
-        super(BERTLJP, self).__init__()
-
-        self.mode = mode
-        self.charge_label_size = charge_label_size
-        self.article_label_size = article_label_size
-        self.penalty_label_size = penalty_label_size
-
-        self.enc = BertModel.from_pretrained("bert-base-chinese",
-                                              num_labels=charge_label_size,
-                                              output_attentions=False,
-                                              output_hidden_states=True)
-
-        self.chargeAwareAtten = CharacAwareAtten(hidden_size, mode)
-
-        self.articleAwareAtten = CharacAwareAtten(hidden_size, mode)
-
-        self.chargeLinear = nn.Sequential(
-            nn.Linear(hidden_size, 4 * hidden_size),
-            nn.BatchNorm1d(4 * hidden_size),
-            nn.ReLU(),
-            nn.Linear(4 * hidden_size, hidden_size)
-        )
-
-        self.chargePreds = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, charge_label_size)
-        )
-
-        self.articlePreds = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, article_label_size)
-        )
-
-        self.penaltyPreds = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, penalty_label_size)
-        )
-
-
-    def forward(self, input_ids, attention_mask):
-        # [batch_size, seq_length, hidden_size]
-        encs = self.enc(input_ids=input_ids, attention_mask=attention_mask)  # encoder 输出
-        # [batch_size, seq_length, hidden_size] -> [batch_size, hidden_size]
-        hidden_state = torch.mean(encs.last_hidden_state, dim=1)
-
-        # [batch_size, hidden_size]
-        charge_vecs = self.chargeLinear(hidden_state)                   # 获取charge_vecs
-        # [batch_size, hidden_size]
-        article_vecs = self.chargeAwareAtten(encs, charge_vecs)          # 获取article_vecs
-        # [batch_size, hidden_size]
-        penalty_vecs = self.articleAwareAtten(encs, article_vecs)        # 获取penalty_vecs
-
-        # [batch_size, charge_label_size]
-        charge_preds = self.chargePreds(charge_vecs)
-        # [batch_size, article_label_size]
-        article_preds = self.articlePreds(article_vecs)
-        # [batch_size, penalty_label_size]
-        penalty_preds = self.penaltyPreds(penalty_vecs)
         return charge_vecs, charge_preds, article_preds, penalty_preds
 
 class CharacAwareAtten(nn.Module):
