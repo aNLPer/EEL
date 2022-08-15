@@ -249,6 +249,7 @@ class gru_ljp():
                         charge_confusMat.updateMat(val_charge_preds.cpu().numpy(), np.array(val_charge_label))
                         article_confusMat.updateMat(val_article_preds.cpu().numpy(), np.array(val_article_label))
                         penalty_confusMat.updateMat(val_penalty_preds.cpu().numpy(), np.array(val_penalty_label))
+
                     val_step += 1
 
                 train_loss_records.append(train_loss / self.EPOCH)
@@ -308,8 +309,8 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     BATCH_SIZE = [16, 32, 64, 128, 192]
     SIM_ACCU_NUM = [2, 4, 8, 8, 16]
-    STEP = [480000,240000, 120000, 60000, 36000]
-    EPOCH =[8000,4000,2000, 1000, 600]
+    STEP = [320000,160000, 80000, 64000, 36000]
+    EPOCH =[4000,2000,1000, 800, 600]
     LR = [2e-3, 8e-4, 4e-4, 2e-4,1e-4]
     WARMUP = [2000, 1000, 500, 200, 150]
     for i in range(len(BATCH_SIZE)):
