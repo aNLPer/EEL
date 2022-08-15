@@ -304,17 +304,16 @@ class gru_ljp():
             f.write('valid_f1_records\t' + valid_f1_records + "\n")
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
-
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     BATCH_SIZE = [16, 32, 64, 128, 192]
     SIM_ACCU_NUM = [2, 4, 8, 8, 16]
     for i in range(len(BATCH_SIZE)):
+        print(f"\n-----------------------{BATCH_SIZE[i]}+{SIM_ACCU_NUM[i]}------------------------\n")
         ljp = gru_ljp(device=device, section="gru-train")
+        print(id(ljp))
         ljp.BATCH_SIZE = BATCH_SIZE[i]
         ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
         ljp.train_base()
         del ljp
         torch.cuda.empty_cache()
-
-    print("end")
