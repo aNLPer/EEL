@@ -26,7 +26,7 @@ class gru_ljp():
         self.config = configparser.ConfigParser()
         self.config.read('config.cfg', encoding="utf-8")
         self.EPOCH = int(self.config.get(self.section, "EPOCH"))
-        self.BATCH_SIZE = list(self.config.get(self.section, "BATCH_SIZE"))
+        self.BATCH_SIZE = int(self.config.get(self.section, "BATCH_SIZE"))
         self.HIDDEN_SIZE = int(self.config.get(self.section, "HIDDEN_SIZE"))
         self.POSITIVE_SIZE = int(self.config.get(self.section, "POSITIVE_SIZE"))
         self.MAX_LENGTH = int(self.config.get(self.section, "MAX_LENGTH"))
@@ -133,7 +133,7 @@ class gru_ljp():
                                                                                     isremove=False,
                                                                                     batch_size=self.BATCH_SIZE,
                                                                                     lang=self.lang,
-                                                                                    positive_size=self.POSITIVEself._SIZE,
+                                                                                    positive_size=self.POSITIVE_SIZE,
                                                                                     sim_accu_num=self.SIM_ACCU_NUM,
                                                                                     ablation=True,
                                                                                     category2accu=self.category2accu,
@@ -303,97 +303,9 @@ class gru_ljp():
             f.write('valid_f1_records\t' + valid_f1_records + "\n")
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
-    def eval(self, model):
-        train_loss_records = []
-        valid_loss_records = []
-        valid_acc_records = {"charge": [], "article": [], "penalty": []}
-        valid_mp_records = {"charge": [], "article": [], "penalty": []}
-        valid_f1_records = {"charge": [], "article": [], "penalty": []}
-        valid_mr_records = {"charge": [], "article": [], "penalty": []}
-        # 初始化混淆矩阵
-        charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
-        article_confusMat = ConfusionMatrix(len(self.lang.index2art))
-        penalty_confusMat = ConfusionMatrix(self.PENALTY_LABEL_SIZE)
-        charge_test = []
-        charge_preds = []
-        article_test = []
-        article_preds = []
-        penalty_test = []
-        penalty_preds = []
-        # 验证模型在验证集上的表现
-        self.model.eval()
-        valid_loss = 0
-        val_step = 0
-        valid_seq, valid_charge_labels, valid_article_labels, valid_penalty_labels = \
-            prepare_valid_data(self.valid_data_path, self.lang, input_idx=0, max_length=self.MAX_LENGTH,
-                               pretrained_vec=self.pretrained_model)
-
-        for val_seq, val_charge_label, val_article_label, val_penalty_label in data_loader(valid_seq,
-                                                                                           valid_charge_labels,
-                                                                                           valid_article_labels,
-                                                                                           valid_penalty_labels,
-                                                                                           shuffle=False,
-                                                                                           batch_size=10 * self.BATCH_SIZE):
-            val_seq_lens = [len(s) for s in val_seq]
-            val_input_ids = [torch.tensor(s) for s in val_seq]
-            val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(device)
-            with torch.no_grad():
-                val_charge_vecs, val_charge_preds, val_article_preds, val_penalty_preds = self.model(val_input_ids,
-                                                                                                     val_seq_lens)
-                val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(device))
-                val_article_preds_loss = self.criterion(val_article_preds,
-                                                   torch.tensor(val_article_label).to(device))
-                val_penalty_preds_loss = self.criterion(val_penalty_preds,
-                                                   torch.tensor(val_penalty_label).to(device))
-                valid_loss += val_charge_preds_loss.item()
-                valid_loss += val_article_preds_loss.item()
-                valid_loss += val_penalty_preds_loss.item()
-                charge_confusMat.updateMat(val_charge_preds.cpu().numpy(), np.array(val_charge_label))
-                article_confusMat.updateMat(val_article_preds.cpu().numpy(), np.array(val_article_label))
-                penalty_confusMat.updateMat(val_penalty_preds.cpu().numpy(), np.array(val_penalty_label))
-            val_step += 1
-
-        train_loss_records.append(train_loss / self.EPOCH)
-
-        valid_loss = valid_loss / val_step * self.BATCH_SIZE
-        valid_loss_records.append(valid_loss)
-
-        # acc
-        valid_acc_records['charge'].append(charge_confusMat.get_acc())
-        valid_acc_records['article'].append(article_confusMat.get_acc())
-        valid_acc_records['penalty'].append(penalty_confusMat.get_acc())
-
-        # F1
-        valid_f1_records['charge'].append(charge_confusMat.getMaF())
-        valid_f1_records['article'].append(article_confusMat.getMaF())
-        valid_f1_records['penalty'].append(penalty_confusMat.getMaF())
-
-        # MR
-        valid_mr_records['charge'].append(charge_confusMat.getMaR())
-        valid_mr_records['article'].append(article_confusMat.getMaR())
-        valid_mr_records['penalty'].append(penalty_confusMat.getMaR())
-
-        # MP
-        valid_mp_records['charge'].append(charge_confusMat.getMaP())
-        valid_mp_records['article'].append(article_confusMat.getMaP())
-        valid_mp_records['penalty'].append(penalty_confusMat.getMaP())
-
-        end = time.time()
-        print(
-            f"Epoch: {int((step + 1) / self.EPOCH)}  Train_loss: {round(train_loss / self.EPOCH, 6)}  Valid_loss: {round(valid_loss, 6)} \n"
-            f"Charge_Acc: {round(charge_confusMat.get_acc(), 6)}  Charge_F1: {round(charge_confusMat.getMaF(), 6)}  Charge_MR: {round(charge_confusMat.getMaR(), 6)}  Charge_MP: {round(charge_confusMat.getMaP(), 6)}\n"
-            f"Article_Acc: {round(article_confusMat.get_acc(), 6)}  Article_F1: {round(article_confusMat.getMaF(), 6)}  Article_MR: {round(article_confusMat.getMaR(), 6)}  Article_MP: {round(article_confusMat.getMaP(), 6)}\n"
-            f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 6)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 6)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 6)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 6)}\n"
-            f"Time: {round((end - start) / 60, 2)}min ")
-
-        # 保存模型
-        save_path = f"../dataset/checkpoints/model-at-epoch-{int((step + 1) / self.EPOCH)}_.pt"
-        torch.save(self.model, save_path)
-
-        train_loss = 0
-        pass
 
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ljp = gru_ljp(device=device, section="gru-train")
+    ljp.train_base()
     print("end")
