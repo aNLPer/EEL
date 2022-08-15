@@ -309,9 +309,12 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     BATCH_SIZE = [16, 32, 64, 128, 192]
     SIM_ACCU_NUM = [2, 4, 8, 8, 16]
-    ljp = gru_ljp(device=device, section="gru-train")
     for i in range(len(BATCH_SIZE)):
+        ljp = gru_ljp(device=device, section="gru-train")
         ljp.BATCH_SIZE = BATCH_SIZE[i]
         ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
         ljp.train_base()
+        del ljp
+        torch.cuda.empty_cache()
+
     print("end")

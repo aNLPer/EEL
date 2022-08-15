@@ -459,7 +459,7 @@ def make_accu2case_dataset(filename, lang, input_idx, accu_idx, max_length, pret
             else:
                 case = [lang.word2index[w] for w in item[input_idx]]
 
-            if len(case)<=max_length:
+            if len(case) <= max_length:
                 case_clip = case
             else:
                 case_clip = case[-max_length:]
