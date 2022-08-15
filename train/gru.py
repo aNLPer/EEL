@@ -311,6 +311,7 @@ if __name__=="__main__":
     STEP = [480000,240000, 120000, 60000, 36000]
     EPOCH =[8000,4000,2000, 1000, 600]
     LR = [2e-3, 8e-4, 4e-4, 2e-4,1e-4]
+    WARMUP = [2000, 1000, 500, 200, 150]
     for i in range(len(BATCH_SIZE)):
         print(f"\n-----------------------{BATCH_SIZE[i]}+{SIM_ACCU_NUM[i]}------------------------\n")
         ljp = gru_ljp(device=device, section="gru-train")
@@ -319,6 +320,7 @@ if __name__=="__main__":
         ljp.STEP = STEP[i]
         ljp.EPOCH = EPOCH[i]
         ljp.LR = LR[i]
+        ljp.WARMUP_STEP = WARMUP[i]
         ljp.train_base()
         del ljp
         torch.cuda.empty_cache()
