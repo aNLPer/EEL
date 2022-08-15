@@ -12,13 +12,6 @@ from transformers import BertModel, BertTokenizer
 import numpy as np
 import operator
 
-# config = configparser.ConfigParser()
-# print("read project config......")
-# config.read("../config.cfg")
-# file_names = ["train"]
-# folders = ["CAIL-LARGE"]
-# data_base_path = config.get("data-prepare", "data_base_path")
-
 class DataPreprocess():
     def __init__(self, dataset_base_path, folders, file_names):
         self.dataset_base_path = dataset_base_path # 数据集根目录
@@ -320,10 +313,6 @@ class DataPreprocess():
                 lang.update_label2index()
                 pickle.dump(lang, lang_f)
         print("end...")
-
-
-
-
 
 if __name__=="__main__":
     dp = DataPreprocess(dataset_base_path="../dataset", folders=["CAIL-SMALL"], file_names=["train"])
