@@ -285,7 +285,7 @@ class gru_ljp():
                     f"Time: {round((end - start) / 60, 2)}min ")
 
                 # 保存模型
-                save_path = f"../dataset/checkpoints/model-at-epoch-{int((step + 1) / self.EPOCH)}-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}.pt"
+                save_path = f"../dataset/checkpoints/model-at-epoch-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}-{int((step + 1) / self.EPOCH)}.pt"
                 torch.save(self.model, save_path)
 
                 train_loss = 0
@@ -313,5 +313,5 @@ if __name__=="__main__":
     for i in range(len(BATCH_SIZE)):
         ljp.BATCH_SIZE = BATCH_SIZE[i]
         ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
-    ljp.train_base()
+        ljp.train_base()
     print("end")
