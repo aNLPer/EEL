@@ -241,7 +241,6 @@ def get_acc_desc(file_path):
 # 获取batch
 def contras_data_loader(accu2case,
                          batch_size,
-                         lang,
                          positive_size=2,
                          sim_accu_num=2,
                          ablation = False,
@@ -275,27 +274,26 @@ def contras_data_loader(accu2case,
     # 选取指控
     sample_accus = list(np.random.choice(accus, size=int(batch_size/(positive_size*sim_accu_num)), replace=False))
     selected_accus = sample_accus.copy()
-    if not ablation:
-        count = 0
-        while count<sim_accu_num-1:
-            for accu in sample_accus:
-                # 获取相似指控
-                sim_accu_ = [category2accu[c] for c in accu2category[accu]]
-                temp = []
-                for l in sim_accu_:
-                    # 筛选出在数据集中出现的相似指控
-                    for i in l:
-                        if i in accus:
-                            temp.append(i)
-                    # temp.extend([i for i in l and i in accus])
-                # 去除相似指控与selected_accus指控中的重复指控
-                temp = set(temp)
-                temp = temp.difference(set(selected_accus))
-                # 添加不重复的相似指控
-                sim_accu = list(temp)
-                if len(sim_accu) != 0:
-                    selected_accus.extend(np.random.choice(sim_accu, size=1))
-            count+=1
+    count = 0
+    while count<sim_accu_num-1:
+        for accu in sample_accus:
+            # 获取相似指控
+            sim_accu_ = [category2accu[c] for c in accu2category[accu]]
+            temp = []
+            for l in sim_accu_:
+                # 筛选出在数据集中出现的相似指控
+                for i in l:
+                    if i in accus:
+                        temp.append(i)
+                # temp.extend([i for i in l and i in accus])
+            # 去除相似指控与selected_accus指控中的重复指控
+            temp = set(temp)
+            temp = temp.difference(set(selected_accus))
+            # 添加不重复的相似指控
+            sim_accu = list(temp)
+            if len(sim_accu) != 0:
+                selected_accus.extend(np.random.choice(sim_accu, size=1))
+        count+=1
     # 若获取的指控不足则随机挑选补充
     if len(selected_accus) < batch_size / positive_size:
         bias = int(batch_size/positive_size-len(selected_accus))
