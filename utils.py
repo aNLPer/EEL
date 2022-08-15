@@ -275,7 +275,7 @@ def contras_data_loader(accu2case,
     # 选取指控
     sample_accus = list(np.random.choice(accus, size=int(batch_size/(positive_size*sim_accu_num)), replace=False))
     selected_accus = sample_accus.copy()
-    if ablation == False:
+    if not ablation:
         count = 0
         while count<sim_accu_num-1:
             for accu in sample_accus:
@@ -285,7 +285,7 @@ def contras_data_loader(accu2case,
                 for l in sim_accu_:
                     # 筛选出在数据集中出现的相似指控
                     for i in l:
-                        if i in lang.accu2index:
+                        if i in accus:
                             temp.append(i)
                     # temp.extend([i for i in l and i in accus])
                 # 去除相似指控与selected_accus指控中的重复指控
@@ -299,7 +299,9 @@ def contras_data_loader(accu2case,
     # 若获取的指控不足则随机挑选补充
     if len(selected_accus) < batch_size / positive_size:
         bias = int(batch_size/positive_size-len(selected_accus))
-        selected_accus.extend(np.random.choice(list(set(accus).difference(set(selected_accus))), size=bias, replace=False))
+        if bias<len(accus)-len(selected_accus):
+            selected_accus.extend(np.random.choice(list(set(accus).difference(set(selected_accus))), size=bias, replace=False))
+
     # print(len(set(selected_accus)))
     # 根据指控获取batch
     for accu in selected_accus:

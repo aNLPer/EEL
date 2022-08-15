@@ -136,7 +136,7 @@ class gru_ljp():
                                                                                     lang=self.lang,
                                                                                     positive_size=self.POSITIVE_SIZE,
                                                                                     sim_accu_num=self.SIM_ACCU_NUM,
-                                                                                    ablation=True,
+                                                                                    ablation=False,
                                                                                     category2accu=self.category2accu,
                                                                                     accu2category=self.accu2category)
             # 设置模型状态
@@ -165,7 +165,7 @@ class gru_ljp():
 
             # charge_vecs的对比误差
             contra_outputs = torch.stack(charge_vecs_outputs, dim=0)  # 2 * [batch_size/posi_size, hidden_size] -> [posi_size, batch_size/posi_size, hidden_size]
-            posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=CHARGE_RADIUS)
+            posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=self.CHARGE_RADIUS)
 
             # 指控分类误差
             charge_preds_outputs = torch.cat(charge_preds_outputs,dim=0)  # [posi_size, batch_size/posi_size, label_size] -> [batch_size, label_size]
@@ -307,8 +307,8 @@ class gru_ljp():
 
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    BATCH_SIZE = [16, 32, 64, 128, 256]
-    SIM_ACCU_NUM = [2, 4, 8, 8]
+    BATCH_SIZE = [16, 32, 64, 128, 192]
+    SIM_ACCU_NUM = [2, 4, 8, 16]
     ljp = gru_ljp(device=device, section="gru-train")
     ljp.train_base()
     print("end")
