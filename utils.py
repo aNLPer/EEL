@@ -385,7 +385,7 @@ def genConfusMat(confusMat, preds, labels):
     for i in range(len(labels_flat)):
         confusMat[labels_flat[i]][pred_flat[i]] += 1
 
-def prepare_valid_data(resourcefile, lang, input_idx, max_length, pretrained_vec=None):
+def prepare_data(resourcefile, lang, input_idx, max_length, pretrained_vec=None):
     seq = []
     charge_labels = []
     article_labels = []
@@ -471,33 +471,12 @@ def make_accu2case_dataset(filename, lang, input_idx, accu_idx, max_length, pret
 
     return accu2case
 
-# def word2Index(file_path, lang, acc2id):
-#     # 数据集
-#     fi = open(file_path, "r", encoding="utf-8")
-#     fo = open(os.path.join(data_base_path, "data_train_forModel.txt"), "w", encoding="utf-8")
-#     count = 0
-#     for line in fi:
-#         count += 1
-#         # 文本数据
-#         item = json.loads(line)
-#         # 将文本妆化成索引
-#         item_num = []
-#
-#         fact_num = []
-#         for fact in item[0:3]:
-#             fact_num.append([lang.word2index[word] for word in fact])
-#         item_num.append(fact_num[0])
-#         item_num.append(fact_num[1])
-#         item_num.append(fact_num[2])
-#         item_num.append(acc2id[item[3].strip()])
-#         item_num.append([lang.word2index[word] for word in item[4]])
-#         # 序列化并写入
-#         item_num_str = json.dumps(item_num, ensure_ascii=False)
-#         fo.write(item_num_str+"\n")
-#         if count%5000==0:
-#             print(f"已处理{count}条数据")
-#     fi.close()
-#     fo.close()
+def dataset_decay(accu2case, decay_rate):
+    for key, values in accu2case.items():
+        random.shuffle(list(values))
+        if len(values)>200:
+            accu2case[key] = values[:int(len(values)*(1-decay_rate))]
+    return accu2case
 
 # 统计文本长度
 def sample_length(path):
