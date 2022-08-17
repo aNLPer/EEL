@@ -18,11 +18,8 @@ from sklearn.metrics import accuracy_score, recall_score, f1_score, precision_sc
 class gru_ljp():
     def __init__(self, device, section):
         self.device = device
+        print("load model parameters...")
         self.section = section
-        self.load_params()
-        self.load_model()
-
-    def load_params(self, DATA="SMALL"):
         self.config = configparser.ConfigParser()
         self.config.read('config.cfg', encoding="utf-8")
         self.EPOCH = int(self.config.get(self.section, "EPOCH"))
@@ -45,11 +42,11 @@ class gru_ljp():
         self.WARMUP_STEP = int(self.config.get(self.section, "WARMUP_STEP"))
         self.DATA = self.config.get(self.section, "DATA")
         self.WIKI = int(self.config.get(self.section, "WIKI"))
-        if DATA == "SMALL":
+        if self.DATA == "SMALL":
             self.corpus_info_path = "../dataprocess/CAIL-SMALL-Lang.pkl"
             self.train_data_path = "../dataset/CAIL-SMALL/train_processed_sp.txt"
             self.valid_data_path = "../dataset/CAIL-SMALL/test_processed_sp.txt"
-        if DATA == "LARGE":
+        if self.DATA == "LARGE":
             self.corpus_info_path = "../dataprocess/Lang-CAIL-LARGE-WORD.pkl"
             self.train_data_path = "../dataset/CAIL-LARGE/train_processed_sp.txt"
             self.valid_data_path = "../dataset/CAIL-LARGE/test_processed_sp.txt"
@@ -70,31 +67,32 @@ class gru_ljp():
 
         print("load dataset classified by accusation...")
         self.accu2case = make_accu2case_dataset(self.train_data_path, lang=self.lang, input_idx=0, accu_idx=1,
-                                           max_length=self.MAX_LENGTH,
-                                           pretrained_vec=self.pretrained_model)
+                                                max_length=self.MAX_LENGTH,
+                                                pretrained_vec=self.pretrained_model)
 
         print("load accusation similarity sheet...")
         self.category2accu, self.accu2category = load_classifiedAccus(self.accu_similarity)
 
-    def load_model(self):
+    def load_model(self, mode="base"):
         print("load model...")
-        self.model = GRULJP(charge_label_size=len(self.lang.index2accu),
-                            article_label_size=len(self.lang.index2art),
-                            penalty_label_size=self.PENALTY_LABEL_SIZE,
-                            voc_size=self.lang.n_words,
-                            dropout=self.DROPOUT_RATE,
-                            num_layers=self.GRU_LAYERS,
-                            hidden_size=self.HIDDEN_SIZE,
-                            pretrained_model=self.pretrained_model,
-                            mode="sum")
-
+        if mode == "base":
+            self.model = GRULJP(charge_label_size=len(self.lang.index2accu),
+                                article_label_size=len(self.lang.index2art),
+                                penalty_label_size=self.PENALTY_LABEL_SIZE,
+                                voc_size=self.lang.n_words,
+                                dropout=self.DROPOUT_RATE,
+                                num_layers=self.GRU_LAYERS,
+                                hidden_size=self.HIDDEN_SIZE,
+                                pretrained_model=self.pretrained_model,
+                                mode="sum")
         self.model.to(self.device)
 
-    def train_base(self, mode="lsscl"):
+    def train(self, mode="lsscl"):
         """
         :param mode: ["vanilla", "lsscl", "eval_batch"]
         :return:
         """
+        self.load_model()
         # 定义损失函数
         self.criterion = nn.CrossEntropyLoss()
 
@@ -153,7 +151,7 @@ class gru_ljp():
                 seq_lens = []
                 for tensor in seqs[i]:
                     seq_lens.append(tensor.shape[0])
-                padded_input_ids = pad_sequence(seqs[i], batch_first=True).to(device)
+                padded_input_ids = pad_sequence(seqs[i], batch_first=True).to(self.device)
 
                 charge_vecs, charge_preds, article_preds, penalty_preds = self.model(padded_input_ids, seq_lens)
                 charge_vecs_outputs.append(charge_vecs)
@@ -169,29 +167,28 @@ class gru_ljp():
             # 指控分类误差
             charge_preds_outputs = torch.cat(charge_preds_outputs,dim=0)  # [posi_size, batch_size/posi_size, label_size] -> [batch_size, label_size]
             accu_labels = [torch.tensor(l) for l in accu_labels]
-            accu_labels = torch.cat(accu_labels, dim=0).to(device)
+            accu_labels = torch.cat(accu_labels, dim=0).to(self.device)
             charge_preds_loss = self.criterion(charge_preds_outputs, accu_labels)
 
             # 法律条款预测误差
             article_preds_outputs = torch.cat(article_preds_outputs, dim=0)
             article_labels = [torch.tensor(l) for l in article_labels]
-            article_labels = torch.cat(article_labels, dim=0).to(device)
+            article_labels = torch.cat(article_labels, dim=0).to(self.device)
             article_preds_loss = self.criterion(article_preds_outputs, article_labels)
 
             # 刑期预测结果约束（相似案件的刑期应该相近）
-            # penalty_contrains = torch.stack(penalty_preds_outputs, dim=0).to(device)
-            # penalty_contrains_loss = penalty_constrain(penalty_contrains, self.PENALTY_RADIUS)
+            penalty_contrains = torch.stack(penalty_preds_outputs, dim=0).to(self.device)
+            penalty_contrains_loss = penalty_constrain(penalty_contrains, self.PENALTY_RADIUS)
 
             # 刑期预测误差
             penalty_preds_outputs = torch.cat(penalty_preds_outputs, dim=0)
             penalty_labels = [torch.tensor(l) for l in penalty_labels]
-            penalty_labels = torch.cat(penalty_labels, dim=0).to(device)
+            penalty_labels = torch.cat(penalty_labels, dim=0).to(self.device)
             penalty_preds_loss = self.criterion(penalty_preds_outputs, penalty_labels)
 
-            if mode=="lsscl":
-                loss = self.ALPHA * (posi_pairs_dist - neg_pairs_dist) + charge_preds_loss + article_preds_loss + penalty_preds_loss
-            else:
-                loss = charge_preds_loss + article_preds_loss + penalty_preds_loss
+            loss = self.ALPHA * (posi_pairs_dist - neg_pairs_dist) + \
+                   charge_preds_loss + article_preds_loss+ penalty_preds_loss + \
+                   self.LAMDA * penalty_contrains_loss
 
             train_loss += loss.item()
 
@@ -212,12 +209,6 @@ class gru_ljp():
                 charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
                 article_confusMat = ConfusionMatrix(len(self.lang.index2art))
                 penalty_confusMat = ConfusionMatrix(self.PENALTY_LABEL_SIZE)
-                charge_test = []
-                charge_preds = []
-                article_test = []
-                article_preds = []
-                penalty_test = []
-                penalty_preds = []
                 # 验证模型在验证集上的表现
                 self.model.eval()
                 valid_loss = 0
@@ -234,15 +225,15 @@ class gru_ljp():
                                                                                                    batch_size=10 * self.BATCH_SIZE):
                     val_seq_lens = [len(s) for s in val_seq]
                     val_input_ids = [torch.tensor(s) for s in val_seq]
-                    val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(device)
+                    val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(self.device)
                     with torch.no_grad():
                         val_charge_vecs, val_charge_preds, val_article_preds, val_penalty_preds = self.model(val_input_ids,
                                                                                                         val_seq_lens)
-                        val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(device))
+                        val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(self.device))
                         val_article_preds_loss = self.criterion(val_article_preds,
-                                                           torch.tensor(val_article_label).to(device))
+                                                           torch.tensor(val_article_label).to(self.device))
                         val_penalty_preds_loss = self.criterion(val_penalty_preds,
-                                                           torch.tensor(val_penalty_label).to(device))
+                                                           torch.tensor(val_penalty_label).to(self.device))
                         valid_loss += val_charge_preds_loss.item()
                         valid_loss += val_article_preds_loss.item()
                         valid_loss += val_penalty_preds_loss.item()
@@ -305,23 +296,41 @@ class gru_ljp():
             f.write('valid_f1_records\t' + valid_f1_records + "\n")
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
+    def verify_sim_accu(self):
+        "验证SIM_ACCU_NUM对模型的影响"
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        section = "multi-task"
+        BATCH_SIZE = [192, 128, 64, 32, 16]
+        SIM_ACCU_NUM = [16, 8, 8, 4, 2]
+        STEP = [48000, 64000, 80000, 160000, 320000]
+        EPOCH = [600, 800, 1000, 2000, 4000]
+        LR = [2e-3, 8e-4, 4e-4, 2e-4, 1e-4]
+        WARMUP = [200, 400, 500, 1000, 2000]
+        for i in range(len(BATCH_SIZE)):
+            print(f"\n-----------------------{BATCH_SIZE[i]}+{SIM_ACCU_NUM[i]}------------------------\n")
+            ljp = gru_ljp(device=device, section="multi-task")
+            ljp.BATCH_SIZE = BATCH_SIZE[i]
+            ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
+            ljp.STEP = STEP[i]
+            ljp.EPOCH = EPOCH[i]
+            ljp.LR = LR[i]
+            ljp.WARMUP_STEP = WARMUP[i]
+            ljp.train()
+            del ljp
+            torch.cuda.empty_cache()
+
+    def verify_trainset_decay(self):
+        "训练集衰减对模型"
+        pass
+
+    def verify_LSSCL(self):
+        "验证LSSCL对模型的影响"
+        pass
+
+    def veryfy_LSSCL_BERT(self):
+        "验证LSSCL方法微调BERT的效果"
+
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    BATCH_SIZE = [192,128,64,32,16]
-    SIM_ACCU_NUM =[16,8,8,4,2]
-    STEP = [48000,64000,80000,160000,320000]
-    EPOCH =[600,800,1000,2000,4000]
-    LR = [2e-3, 8e-4, 4e-4,2e-4,1e-4]
-    WARMUP = [200,400,500,1000, 2000]
-    for i in range(len(BATCH_SIZE)):
-        print(f"\n-----------------------{BATCH_SIZE[i]}+{SIM_ACCU_NUM[i]}------------------------\n")
-        ljp = gru_ljp(device=device, section="gru-train")
-        ljp.BATCH_SIZE = BATCH_SIZE[i]
-        ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
-        ljp.STEP = STEP[i]
-        ljp.EPOCH = EPOCH[i]
-        ljp.LR = LR[i]
-        ljp.WARMUP_STEP = WARMUP[i]
-        ljp.train_base()
-        del ljp
-        torch.cuda.empty_cache()
+    plj = gru_ljp(device=device, section="multi-task")
+    plj.train()
