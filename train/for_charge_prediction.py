@@ -195,7 +195,7 @@ class gru_ljp():
                     val_input_ids = [torch.tensor(s) for s in val_seq]
                     val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(device)
                     with torch.no_grad():
-                        val_charge_vecs, val_charge_preds, val_article_preds, val_penalty_preds = self.model(val_input_ids,
+                        val_charge_vecs, val_charge_preds = self.model(val_input_ids,
                                                                                                         val_seq_lens)
                         val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(device))
 
