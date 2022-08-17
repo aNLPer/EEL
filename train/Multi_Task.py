@@ -116,7 +116,7 @@ class gru_ljp():
                                                                        num_warmup_steps=self.WARMUP_STEP,
                                                                        num_training_steps=self.STEP,
                                                                        num_cycles=self.NUM_CYCLES)
-        print("train_base method start......\n")
+        print("train method start...\n")
 
         train_loss = 0
         train_loss_records = []
