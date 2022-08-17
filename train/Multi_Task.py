@@ -299,22 +299,13 @@ class gru_ljp():
     def verify_sim_accu(self):
         "验证SIM_ACCU_NUM对模型的影响"
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        section = "multi-task"
-        BATCH_SIZE = [192, 128, 64, 32, 16]
-        SIM_ACCU_NUM = [16, 8, 8, 4, 2]
-        STEP = [48000, 64000, 80000, 160000, 320000]
-        EPOCH = [600, 800, 1000, 2000, 4000]
-        LR = [2e-3, 8e-4, 4e-4, 2e-4, 1e-4]
-        WARMUP = [200, 400, 500, 1000, 2000]
+        BATCH_SIZE = [128]
+        SIM_ACCU_NUM = [2, 4, 8, 16, 32]
         for i in range(len(BATCH_SIZE)):
             print(f"\n-----------------------{BATCH_SIZE[i]}+{SIM_ACCU_NUM[i]}------------------------\n")
             ljp = gru_ljp(device=device, section="multi-task")
             ljp.BATCH_SIZE = BATCH_SIZE[i]
             ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
-            ljp.STEP = STEP[i]
-            ljp.EPOCH = EPOCH[i]
-            ljp.LR = LR[i]
-            ljp.WARMUP_STEP = WARMUP[i]
             ljp.train()
             del ljp
             torch.cuda.empty_cache()
