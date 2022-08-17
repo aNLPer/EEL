@@ -393,9 +393,9 @@ class gru_ljp():
                 article_labels = torch.cat(article_labels, dim=0).to(self.device)
                 article_preds_loss = self.criterion(article_preds_outputs, article_labels)
 
-                # 刑期预测结果约束（相似案件的刑期应该相近）
-                penalty_contrains = torch.stack(penalty_preds_outputs, dim=0).to(self.device)
-                penalty_contrains_loss = penalty_constrain(penalty_contrains, self.PENALTY_RADIUS)
+                # # 刑期预测结果约束（相似案件的刑期应该相近）
+                # penalty_contrains = torch.stack(penalty_preds_outputs, dim=0).to(self.device)
+                # penalty_contrains_loss = penalty_constrain(penalty_contrains, self.PENALTY_RADIUS)
 
                 # 刑期预测误差
                 penalty_preds_outputs = torch.cat(penalty_preds_outputs, dim=0)
@@ -489,7 +489,7 @@ class gru_ljp():
                 f"Time: {round((end - start) / 60, 2)}min ")
 
             # 保存模型
-            save_path = f"../dataset/checkpoints/model-at-epoch-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}-{int((step + 1) / self.EPOCH)}.pt"
+            save_path = f"../dataset/checkpoints/model-at-epoch-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}.pt"
             torch.save(self.model, save_path)
 
             train_loss = 0
