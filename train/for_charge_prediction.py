@@ -195,8 +195,7 @@ class gru_ljp():
                     val_input_ids = [torch.tensor(s) for s in val_seq]
                     val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(device)
                     with torch.no_grad():
-                        val_charge_vecs, val_charge_preds = self.model(val_input_ids,
-                                                                                                        val_seq_lens)
+                        val_charge_vecs, val_charge_preds = self.model(val_input_ids, val_seq_lens)
                         val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(device))
 
                         valid_loss += val_charge_preds_loss.item()
@@ -236,7 +235,7 @@ class gru_ljp():
         valid_mp_records = json.dumps(valid_mp_records, ensure_ascii=False)
         valid_mr_records = json.dumps(valid_mr_records, ensure_ascii=False)
         valid_f1_records = json.dumps(valid_f1_records, ensure_ascii=False)
-        with open(f"../training_records_{self.BATCH_SIZE}_{self.SIM_ACCU_NUM}.txt", "w", encoding="utf-8") as f:
+        with open(f"../charge_pred_records_{self.BATCH_SIZE}_{self.SIM_ACCU_NUM}.txt", "w", encoding="utf-8") as f:
             f.write('train_loss_records\t' + train_loss_records + "\n")
             f.write('valid_loss_records\t' + valid_loss_records + "\n")
             f.write('valid_acc_records\t' + valid_acc_records + "\n")
