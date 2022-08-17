@@ -98,7 +98,7 @@ class gru_ljp():
         # optimizer = AdamW(model.parameters(), lr=LR, weight_decay=L2)
         # optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=0.05)
         optimizer = optim.AdamW([{"params": self.model.em.parameters(), 'lr': 0.0001},
-                                 {"params": self.model.enc.parameters(), 'weight_decay': 0.08},
+                                 {"params": self.model.enc.parameters(), 'weight_decay': 0.1},
                                  {"params": self.model.chargeLinear.parameters()},
                                  {'params': self.model.chargePreds.parameters()},
                                  ], lr=self.LR, weight_decay=self.L2)
