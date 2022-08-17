@@ -350,7 +350,7 @@ def train_distloss_fun(outputs, radius = 10):
             # outputs[i] outputs[j]
             for k in range(posi_size):
                 dist = F.pairwise_distance(outputs[i][k], outputs[j])
-                zero = torch.zeros_like(dist)+0.00001
+                zero = torch.zeros_like(dist)
                 dist = dist.where(dist<radius, zero)
                 neg_pairs_dist += torch.sum(dist)
 
