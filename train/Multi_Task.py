@@ -86,26 +86,31 @@ class gru_ljp():
             prepare_data(self.train_data_path, self.lang, input_idx=0, max_length=self.MAX_LENGTH,
                          pretrained_vec=self.pretrained_model)
 
-    def load_model(self, mode):
+    def load_model(self, ablation=None):
+        """
+        :param ablation: 消融实验：None, lsscl, charge-aware
+        :return:
+        """
         print("load model...")
-        if mode == "lsscl" or mode =="wo_lsscl":
-            self.model = GRULJP(charge_label_size=len(self.lang.index2accu),
-                                article_label_size=len(self.lang.index2art),
-                                penalty_label_size=self.PENALTY_LABEL_SIZE,
-                                voc_size=self.lang.n_words,
-                                dropout=self.DROPOUT_RATE,
-                                num_layers=self.GRU_LAYERS,
-                                hidden_size=self.HIDDEN_SIZE,
-                                pretrained_model=self.pretrained_model,
-                                mode="sum")
+        self.model = GRULJP(charge_label_size=len(self.lang.index2accu),
+                            article_label_size=len(self.lang.index2art),
+                            penalty_label_size=self.PENALTY_LABEL_SIZE,
+                            voc_size=self.lang.n_words,
+                            ablation=ablation,
+                            dropout=self.DROPOUT_RATE,
+                            num_layers=self.GRU_LAYERS,
+                            hidden_size=self.HIDDEN_SIZE,
+                            pretrained_model=self.pretrained_model,
+                            mode="sum")
         self.model.to(self.device)
 
-    def train(self, mode="lsscl"):
+
+    def train(self, mode=None):
         """
         :param mode: ["vanilla", "lsscl", "eval_batch"]
         :return:
         """
-        self.load_model(mode=mode)
+        self.load_model(ablation=mode)
         # 定义损失函数
         self.criterion = nn.CrossEntropyLoss()
 
@@ -535,11 +540,16 @@ def verify_trainset_decay():
 
 def verify_LSSCL():
     "验证LSSCL对模型的影响"
-    pass
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    ljp = gru_ljp(device=device, section="multi-task")
+    ljp.train_wo_lsscl()
+    del ljp
+    torch.cuda.empty_cache()
 
 def veryfy_LSSCL_BERT():
     "验证LSSCL方法微调BERT的效果"
     pass
+
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     plj = gru_ljp(device=device, section="multi-task")

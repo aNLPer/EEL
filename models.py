@@ -121,6 +121,7 @@ class GRULJP(nn.Module):
                  penalty_label_size,
                  voc_size, # 词汇表
                  pretrained_model,
+                 ablation=None,
                  hidden_size=128, # 隐藏状态size，
                  num_layers = 2,
                  bidirectional=True,
@@ -132,6 +133,7 @@ class GRULJP(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout = dropout
+        self.ablation = ablation  # charge-aware / lsscl
         self.bidirectional = bidirectional
         self.charge_label_size = charge_label_size
         self.article_label_size = article_label_size
@@ -150,10 +152,11 @@ class GRULJP(nn.Module):
                           batch_first=True,
                           bidirectional=self.bidirectional)
 
-        self.chargeAwareAtten = CharacAwareAtten(2*self.hidden_size, mode)
-        self.chargeAwareAtten.to(device)
-        self.articleAwareAtten = CharacAwareAtten(2*self.hidden_size, mode)
-        self.articleAwareAtten.to(device)
+        if not self.ablation == "charge-aware":
+            self.chargeAwareAtten = CharacAwareAtten(2*self.hidden_size, mode)
+            self.chargeAwareAtten.to(device)
+            self.articleAwareAtten = CharacAwareAtten(2*self.hidden_size, mode)
+            self.articleAwareAtten.to(device)
 
 
         self.chargeLinear = nn.Sequential(
@@ -203,21 +206,35 @@ class GRULJP(nn.Module):
         unpacked_lens = unpacked_lens.unsqueeze(dim=1).to(device)
         outputs_mean = outputs_sum/unpacked_lens
 
-        # [batch_size, 2*hidden_size]
-        charge_vecs = self.chargeLinear(outputs_mean)
-        # [batch_size, 2*hidden_size]
-        article_vecs = self.chargeAwareAtten(outputs_unpacked, charge_vecs)
-        # [batch_size, 2*hidden_size]
-        penalty_vecs = self.articleAwareAtten(outputs_unpacked, charge_vecs)
+        if self.ablation == None or self.ablation == "lsscl":
+            # [batch_size, 2*hidden_size]
+            charge_vecs = self.chargeLinear(outputs_mean)
+            # [batch_size, 2*hidden_size]
+            article_vecs = self.chargeAwareAtten(outputs_unpacked, charge_vecs)
+            # [batch_size, 2*hidden_size]
+            penalty_vecs = self.articleAwareAtten(outputs_unpacked, charge_vecs)
 
-        # [batch_size, charge_label_size]
-        charge_preds = self.chargePreds(charge_vecs)
-        # [batch_size, article_label_size]
-        article_preds = self.articlePreds(article_vecs)
-        # [batch_size, penalty_label_size]
-        penalty_preds = self.penaltyPreds(penalty_vecs)
+            # [batch_size, charge_label_size]
+            charge_preds = self.chargePreds(charge_vecs)
+            # [batch_size, article_label_size]
+            article_preds = self.articlePreds(article_vecs)
+            # [batch_size, penalty_label_size]
+            penalty_preds = self.penaltyPreds(penalty_vecs)
 
-        return charge_vecs, charge_preds, article_preds, penalty_preds
+            return charge_vecs, charge_preds, article_preds, penalty_preds
+
+        if self.ablation == "charge-aware": # 去掉 charge-aware modules
+            # [batch_size, 2*hidden_size]
+            charge_vecs = self.chargeLinear(outputs_mean)
+
+            # [batch_size, charge_label_size]
+            charge_preds = self.chargePreds(charge_vecs)
+            # [batch_size, article_label_size]
+            article_preds = self.articlePreds(outputs_mean)
+            # [batch_size, penalty_label_size]
+            penalty_preds = self.penaltyPreds(outputs_mean)
+
+            return charge_vecs, charge_preds, article_preds, penalty_preds
 
 class ChargePred(nn.Module):
     def __init__(self,
