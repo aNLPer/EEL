@@ -104,7 +104,6 @@ class gru_ljp():
                             mode="sum")
         self.model.to(self.device)
 
-
     def train(self, mode=None):
         """
         :param mode: ["vanilla", "lsscl", "eval_batch"]
@@ -143,7 +142,7 @@ class gru_ljp():
         valid_mp_records = {"charge": [], "article": [], "penalty": []}
         valid_f1_records = {"charge": [], "article": [], "penalty": []}
         valid_mr_records = {"charge": [], "article": [], "penalty": []}
-        for step in range(self.STEP):
+        for step in range(int(self.STEP/2)):
             # 随机生成一个batch
             if step % self.EPOCH == 0:
                 start = time.time()
@@ -517,10 +516,10 @@ def verify_sim_accu():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     SIM_ACCU_NUM = [2, 4, 8, 16, 32]
     for i in range(len(SIM_ACCU_NUM)):
-        print(f"\n-----------------------{SIM_ACCU_NUM[i]}------------------------\n")
+        print(f"\n-----------------------SIM_ACCU_NUM={SIM_ACCU_NUM[i]}------------------------\n")
         ljp = gru_ljp(device=device, section="multi-task")
         ljp.SIM_ACCU_NUM = SIM_ACCU_NUM[i]
-        ljp.train(mode="sim_accu")
+        ljp.train(mode=None)
         del ljp
         torch.cuda.empty_cache()
 
@@ -549,6 +548,10 @@ def veryfy_LSSCL_BERT():
     pass
 
 if __name__=="__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    plj = gru_ljp(device=device, section="multi-task")
-    plj.train()
+    # # train sota
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # plj = gru_ljp(device=device, section="multi-task")
+    # plj.train()
+
+    # 验证SIM_ACCU_NUM对模型的影响
+    verify_sim_accu()

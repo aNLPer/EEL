@@ -11,7 +11,7 @@ import torch.optim as optim
 from models import GRULJP, ChargePred
 from torch.nn.utils.rnn import pad_sequence
 from transformers import get_linear_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, get_cosine_schedule_with_warmup
-from utils import contras_data_loader, train_distloss_fun, ConfusionMatrix, prepare_valid_data, data_loader, check_data, Lang, make_accu2case_dataset, load_classifiedAccus
+from utils import contras_data_loader, train_distloss_fun, ConfusionMatrix, prepare_data, data_loader, check_data, Lang, make_accu2case_dataset, load_classifiedAccus
 from sklearn.metrics import accuracy_score, recall_score, f1_score, precision_score
 
 class gru_ljp():
@@ -181,7 +181,7 @@ class gru_ljp():
                 valid_loss = 0
                 val_step = 0
                 valid_seq, valid_charge_labels, valid_article_labels, valid_penalty_labels = \
-                    prepare_valid_data(self.valid_data_path, self.lang, input_idx=0, max_length=self.MAX_LENGTH,
+                    prepare_data(self.valid_data_path, self.lang, input_idx=0, max_length=self.MAX_LENGTH,
                                        pretrained_vec=self.pretrained_model)
 
                 for val_seq, val_charge_label, _, _ in data_loader(valid_seq,

@@ -1,9 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import utils
-from sklearn.metrics import accuracy_score, recall_score, f1_score, precision_score
-from sklearn.decomposition import PCA
-import random
+import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
 vecArr = np.random.rand(1000,512) #构造1000个512维向量, 换成实际需要聚类的向量即可
