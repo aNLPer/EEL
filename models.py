@@ -122,10 +122,10 @@ class GRULJP(nn.Module):
                  voc_size, # 词汇表
                  pretrained_model,
                  ablation=None,
-                 hidden_size=128, # 隐藏状态size，
-                 num_layers = 2,
+                 hidden_size=300, # 隐藏状态size，
+                 num_layers=3,
                  bidirectional=True,
-                 dropout=0.5,
+                 dropout=0.6,
                  mode="concat"):
         super(GRULJP, self).__init__()
 
@@ -160,35 +160,30 @@ class GRULJP(nn.Module):
 
 
         self.chargeLinear = nn.Sequential(
-            nn.Linear(2*self.hidden_size, 4*self.hidden_size),
-            nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
-            nn.Linear(4*self.hidden_size, 2*self.hidden_size),
-            # nn.Dropout(p=0.5)
+            nn.Linear(2*self.hidden_size, 2*self.hidden_size),
+            nn.BatchNorm1d(2*self.hidden_size),
+            nn.Relu()
         )
 
         self.chargePreds = nn.Sequential(
-            nn.Linear(2*self.hidden_size, 4*self.hidden_size),
-            nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
-            nn.Linear(4*self.hidden_size, self.charge_label_size),
-            # nn.Dropout(p=0.5)
+            nn.Linear(2*self.hidden_size, self.hidden_size),
+            nn.BatchNorm1d(self.hidden_size),
+            nn.ReLU(),
+            nn.Linear(self.hidden_size, self.charge_label_size)
         )
 
         self.articlePreds = nn.Sequential(
-            nn.Linear(2*self.hidden_size, 4*self.hidden_size),
-            nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
-            nn.Linear(4*self.hidden_size, self.article_label_size),
-            # nn.Dropout(p=0.5)
+            nn.Linear(2*self.hidden_size, self.hidden_size),
+            nn.BatchNorm1d(self.hidden_size),
+            nn.ReLU(),
+            nn.Linear(self.hidden_size, self.article_label_size),
         )
 
         self.penaltyPreds = nn.Sequential(
-            nn.Linear(2*self.hidden_size, 4*self.hidden_size),
-            nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
-            nn.Linear(4*self.hidden_size, self.penalty_label_size),
-            # nn.Dropout(p=0.5)
+            nn.Linear(2*self.hidden_size, self.hidden_size),
+            nn.BatchNorm1d(self.hidden_size),
+            nn.ReLU(),
+            nn.Linear(self.hidden_size, self.penalty_label_size),
         )
 
     def forward(self, input_ids, seq_lens):
@@ -269,14 +264,14 @@ class ChargePred(nn.Module):
         self.chargeLinear = nn.Sequential(
             nn.Linear(2*self.hidden_size, 4*self.hidden_size),
             nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Linear(4*self.hidden_size, 2*self.hidden_size),
         )
 
         self.chargePreds = nn.Sequential(
             nn.Linear(2*self.hidden_size, 4*self.hidden_size),
             nn.BatchNorm1d(4*self.hidden_size),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Linear(4*self.hidden_size, self.charge_label_size),
         )
 
@@ -319,17 +314,15 @@ class CharacAwareAtten(nn.Module):
             self.linear = nn.Sequential(
                 nn.Linear(self.hidden_size, 2 * self.hidden_size),
                 nn.BatchNorm1d(2 * self.hidden_size),
-                nn.GELU(),
-                nn.Linear(2 * self.hidden_size, self.hidden_size),
-                nn.Dropout(p=0.5)
+                nn.ReLU(),
+                nn.Linear(2 * self.hidden_size, self.hidden_size)
             )
         if mode == "concat":
             self.linear = nn.Sequential(
                 nn.Linear(2*self.hidden_size, 4 * self.hidden_size),
                 nn.BatchNorm1d(4 * self.hidden_size),
-                nn.GELU(),
-                nn.Linear(4 * self.hidden_size, self.hidden_size),
-                nn.Dropout(p=0.5)
+                nn.ReLU(),
+                nn.Linear(4 * self.hidden_size, self.hidden_size)
             )
 
     def forward(self, encs, vecs):
