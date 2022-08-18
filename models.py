@@ -162,7 +162,7 @@ class GRULJP(nn.Module):
         self.chargeLinear = nn.Sequential(
             nn.Linear(2*self.hidden_size, 2*self.hidden_size),
             nn.BatchNorm1d(2*self.hidden_size),
-            nn.Relu()
+            nn.ReLU()
         )
 
         self.chargePreds = nn.Sequential(

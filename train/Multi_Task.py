@@ -121,9 +121,9 @@ class gru_ljp():
         # optimizer = AdamW(model.parameters(), lr=LR, weight_decay=L2)
         # optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=0.05)
         optimizer = optim.AdamW([{"params": self.model.em.parameters(), 'lr': 0.00001},
-                                 {"params": self.model.enc.parameters(), 'weight_decay': 0.07},
-                                 {"params": self.model.chargeAwareAtten.parameters(), 'weight_decay': 0.07},
-                                 {'params': self.model.articleAwareAtten.parameters(), 'weight_decay': 0.07},
+                                 {"params": self.model.enc.parameters(), 'weight_decay': 0.1},
+                                 {"params": self.model.chargeAwareAtten.parameters()},
+                                 {'params': self.model.articleAwareAtten.parameters()},
                                  {"params": self.model.chargeLinear.parameters()},
                                  {'params': self.model.chargePreds.parameters()},
                                  {'params': self.model.articlePreds.parameters()},
@@ -177,10 +177,9 @@ class gru_ljp():
                 article_preds_outputs.append(article_preds)
                 penalty_preds_outputs.append(penalty_preds)
 
-            # charge_vecs的对比误差
-            if mode=="lsscl":
-                contra_outputs = torch.stack(charge_vecs_outputs, dim=0)  # 2 * [batch_size/posi_size, hidden_size] -> [posi_size, batch_size/posi_size, hidden_size]
-                posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=self.CHARGE_RADIUS)
+
+            contra_outputs = torch.stack(charge_vecs_outputs, dim=0)  # 2 * [batch_size/posi_size, hidden_size] -> [posi_size, batch_size/posi_size, hidden_size]
+            posi_pairs_dist, neg_pairs_dist = train_distloss_fun(contra_outputs, radius=self.CHARGE_RADIUS)
 
             # 指控分类误差
             charge_preds_outputs = torch.cat(charge_preds_outputs,dim=0)  # [posi_size, batch_size/posi_size, label_size] -> [batch_size, label_size]
@@ -536,7 +535,6 @@ def verify_trainset_decay():
         ljp.train(mode="dataset_decay")
         del ljp
         torch.cuda.empty_cache()
-
 
 def verify_LSSCL():
     "验证LSSCL对模型的影响"
