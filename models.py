@@ -201,9 +201,11 @@ class GRULJP(nn.Module):
         unpacked_lens = unpacked_lens.unsqueeze(dim=1).to(device)
         outputs_mean = outputs_sum/unpacked_lens
 
+        # [batch_size, 2*hidden_size]
+        charge_vecs = self.chargeLinear(outputs_mean)
+
         if self.ablation == None or self.ablation == "lsscl":
-            # [batch_size, 2*hidden_size]
-            charge_vecs = self.chargeLinear(outputs_mean)
+
             # [batch_size, 2*hidden_size]
             article_vecs = self.chargeAwareAtten(outputs_unpacked, charge_vecs)
             # [batch_size, 2*hidden_size]
@@ -212,22 +214,20 @@ class GRULJP(nn.Module):
             # [batch_size, charge_label_size]
             charge_preds = self.chargePreds(charge_vecs)
             # [batch_size, article_label_size]
-            article_preds = self.articlePreds(article_vecs)
+            article_preds = self.articlePreds(outputs_mean)
             # [batch_size, penalty_label_size]
-            penalty_preds = self.penaltyPreds(penalty_vecs)
+            penalty_preds = self.penaltyPreds(outputs_mean)
 
             return charge_vecs, charge_preds, article_preds, penalty_preds
 
         if self.ablation == "charge-aware": # 去掉 charge-aware modules
-            # [batch_size, 2*hidden_size]
-            charge_vecs = self.chargeLinear(outputs_mean)
 
             # [batch_size, charge_label_size]
             charge_preds = self.chargePreds(charge_vecs)
             # [batch_size, article_label_size]
-            article_preds = self.articlePreds(outputs_mean)
+            article_preds = self.articlePreds(charge_vecs)
             # [batch_size, penalty_label_size]
-            penalty_preds = self.penaltyPreds(outputs_mean)
+            penalty_preds = self.penaltyPreds(charge_vecs)
 
             return charge_vecs, charge_preds, article_preds, penalty_preds
 

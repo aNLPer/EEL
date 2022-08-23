@@ -326,6 +326,18 @@ def data_loader(seq, charge_labels, article_labels, penalty_labels,shuffle, batc
               [article_labels[j] for j in ids], \
               [penalty_labels[j] for j in ids]
 
+def load_accu2desc(file_path):
+    accu2desc = {}
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            item = json.loads(line)
+            accu = item["accusation"]
+            desc = item["desc"]
+            if accu not in accu2desc:
+                accu2desc[accu] = desc
+    return accu2desc
+
+
 def train_distloss_fun(outputs, radius = 10):
     """
     :param outputs: [posi_size, batch_size/posi_size, hidden_dim]
@@ -583,3 +595,11 @@ def val_test_datafilter(resourcefile, targetflie):
                 fw.write(line)
     fw.close()
     print("processing end ......")
+
+if __name__ == "__main__":
+    accu_desc = load_accu2desc("./dataprocess/accusation_description.json")
+    _, accu2category = load_classifiedAccus("./dataprocess/accusation_classified_v2_2.txt")
+    key1 = accu2category.keys()
+    for key in key1:
+        if key not in accu_desc.keys():
+            print(key)
