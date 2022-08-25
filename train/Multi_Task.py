@@ -225,12 +225,6 @@ class gru_ljp():
                 charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
                 article_confusMat = ConfusionMatrix(len(self.lang.index2art))
                 penalty_confusMat = ConfusionMatrix(self.PENALTY_LABEL_SIZE)
-                charge_predictions = []
-                article_predictions = []
-                penalty_predictions = []
-                charge_labels = []
-                article_labels = []
-                penalty_labels = []
 
                 # 验证模型在验证集上的表现
                 self.model.eval()
@@ -258,13 +252,6 @@ class gru_ljp():
                         valid_loss += val_charge_preds_loss.item()
                         valid_loss += val_article_preds_loss.item()
                         valid_loss += val_penalty_preds_loss.item()
-
-                        charge_predictions.extend(utils.preds2labels(val_charge_preds.cpu().numpy()))
-                        charge_labels.extend(val_charge_label)
-                        article_predictions.extend(utils.preds2labels(val_article_preds.cpu().numpy()))
-                        article_labels.extend(val_article_label)
-                        penalty_predictions.extend(val_penalty_preds.cpu().numpy())
-                        penalty_labels.extend(val_penalty_label)
 
                         charge_confusMat.updateMat(val_charge_preds.cpu().numpy(), np.array(val_charge_label))
                         article_confusMat.updateMat(val_article_preds.cpu().numpy(), np.array(val_article_label))
@@ -300,17 +287,11 @@ class gru_ljp():
                 end = time.time()
                 print(
                     f"Epoch: {int((step + 1) / self.EPOCH)}  Train_loss: {round(train_loss / self.EPOCH, 6)}  Valid_loss: {round(valid_loss, 6)} \n"
-                    f"Charge_Acc: {round(charge_confusMat.get_acc(), 6)}  Charge_F1: {round(charge_confusMat.getMaF(), 6)}  Charge_MR: {round(charge_confusMat.getMaR(), 6)}  Charge_MP: {round(charge_confusMat.getMaP(), 6)}\n"
-                    f"Article_Acc: {round(article_confusMat.get_acc(), 6)}  Article_F1: {round(article_confusMat.getMaF(), 6)}  Article_MR: {round(article_confusMat.getMaR(), 6)}  Article_MP: {round(article_confusMat.getMaP(), 6)}\n"
-                    f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 6)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 6)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 6)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 6)}\n"
+                    f"Charge_Acc: {round(charge_confusMat.get_acc(), 2)}  Charge_MP: {round(charge_confusMat.getMaP(), 2)}  Charge_MR: {round(charge_confusMat.getMaR(), 2)}  Charge_F1: {round(charge_confusMat.getMaF(), 2)}\n"
+                    f"Article_Acc: {round(article_confusMat.get_acc(), 2)}  Article_MP: {round(article_confusMat.getMaP(), 2)}   Article_MR: {round(article_confusMat.getMaR(), 2)} Article_F1: {round(article_confusMat.getMaF(), 2)}\n"
+                    f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 2)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 2)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 2)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 2)}\n"
                     f"Time: {round((end - start) / 60, 2)}min ")
 
-                print(
-                    f"Epoch: {int((step + 1) / self.EPOCH)}  Train_loss: {round(train_loss / self.EPOCH, 6)}  Valid_loss: {round(valid_loss, 6)} \n"
-                    f"Charge_Acc: {round(accuracy_score(charge_labels, charge_predictions), 2)}  Charge_MP: {round(precision_score(charge_labels, charge_predictions, average='macro'), 2)}  Charge_MR: {round(recall_score(charge_labels, charge_predictions, average='macro'), 2)}  Charge_F1: {round(f1_score(charge_labels, charge_predictions,average='macro'), 2)}\n"
-                    f"Article_Acc: {round(accuracy_score(article_labels, article_predictions), 2)}  Article_MP: {round(precision_score(article_labels, article_predictions, average='macro'), 2)}  Article_MR: {round(recall_score(article_labels, article_predictions, average='macro'), 2)}  Article_F1: {round(f1_score(article_labels, article_predictions,average='macro'))}\n"
-                    f"Article_Acc: {round(accuracy_score(penalty_labels, penalty_predictions), 2)}  Article_MP: {round(precision_score(penalty_labels, penalty_predictions, average='macro'), 2)}  Article_MR: {round(recall_score(penalty_labels, penalty_predictions, average='macro'), 2)}  Article_F1: {round(f1_score(penalty_labels, penalty_predictions,average='macro'), 2)}\n"
-                    f"Time: {round((end - start) / 60, 2)}min ")
 
                 # 保存模型
                 save_path = f"../dataset/checkpoints/model-at-epoch-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}-{int((step + 1) / self.EPOCH)}.pt"
@@ -722,7 +703,7 @@ def verify_sim_accu():
 
 def verify_trainset_decay():
     "训练集衰减对模型"
-    decay_rate = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    decay_rate = [0.6,0.5,0.4,0.3,0.2,0.1]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for rate in decay_rate:
         print(f"\n-----------------------{rate}------------------------\n")
