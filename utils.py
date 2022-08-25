@@ -243,9 +243,10 @@ def contras_data_loader(accu2case,
                          batch_size,
                          positive_size=2,
                          sim_accu_num=2,
-                         ablation = False,
+                         useAnchor=0,
                          category2accu=None,
-                         accu2category=None):
+                         accu2category=None,
+                         accu2desc=None):
     """
     1. 先从accu2case中抽取出batch_size/2种不同的指控
     2. 对于每个指控随机抽取positive_size个案件
@@ -256,7 +257,7 @@ def contras_data_loader(accu2case,
     :param category2accu: 类别：[指控s]（字典）
     :param accu2category: 指控：[类别s]（字典）
     :param sim_accu_num: 一个batch中任意指控及其相似指控的和
-
+    :param useAnchor:0：不使用指控描述；1：仅仅使用指控描述作为positive；2：使用指控描述和sample in the same class 作为positive
     其中 batch_size/sim_accu_num 为整数
     :return:
     """
@@ -326,13 +327,28 @@ def data_loader(seq, charge_labels, article_labels, penalty_labels,shuffle, batc
               [article_labels[j] for j in ids], \
               [penalty_labels[j] for j in ids]
 
-def load_accu2desc(file_path):
+
+def data_loader_cycle(accu2case):
+    max_length = max([len(cases) for _, cases in accu2case.items()])
+    for i in range(max_length):
+        samples = [cases[i%len(cases)] for key, cases in accu2case.items()]
+        yield [sample[0] for sample in samples], \
+              [sample[1] for sample in samples], \
+              [sample[2] for sample in samples], \
+              [sample[3] for sample in samples],
+
+
+def load_accu2desc(file_path, pretrained_vec=None):
     accu2desc = {}
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             item = json.loads(line)
             accu = item["accusation"]
-            desc = item["desc"]
+            if pretrained_vec is not None:
+                desc = [pretrained_vec.get_index(w) if w in pretrained_vec.key_to_index.keys()
+                 else pretrained_vec.get_index("") for w in item["desc"]]
+            else:
+                desc = item["desc"]
             if accu not in accu2desc:
                 accu2desc[accu] = desc
     return accu2desc
@@ -596,10 +612,11 @@ def val_test_datafilter(resourcefile, targetflie):
     fw.close()
     print("processing end ......")
 
+def preds2labels(preds):
+    preds = np.argmax(preds, axis=1).flatten()
+    return list(preds)
+
+
 if __name__ == "__main__":
-    accu_desc = load_accu2desc("./dataprocess/accusation_description.json")
-    _, accu2category = load_classifiedAccus("./dataprocess/accusation_classified_v2_2.txt")
-    key1 = accu2category.keys()
-    for key in key1:
-        if key not in accu_desc.keys():
-            print(key)
+    preds = np.array([[0.2,0.8],[0.1,0.9]])
+    print(preds2labels(preds))
