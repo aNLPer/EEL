@@ -214,9 +214,9 @@ class GRULJP(nn.Module):
             # [batch_size, charge_label_size]
             charge_preds = self.chargePreds(charge_vecs)
             # [batch_size, article_label_size]
-            article_preds = self.articlePreds(outputs_mean)
+            article_preds = self.articlePreds(outputs_mean+article_vecs)
             # [batch_size, penalty_label_size]
-            penalty_preds = self.penaltyPreds(outputs_mean)
+            penalty_preds = self.penaltyPreds(outputs_mean+penalty_vecs)
 
             return charge_vecs, charge_preds, article_preds, penalty_preds
 

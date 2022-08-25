@@ -486,7 +486,7 @@ def make_accu2case_dataset(filename, lang, input_idx, accu_idx, max_length, pret
 def dataset_decay(accu2case, decay_rate):
     for key, values in accu2case.items():
         random.shuffle(list(values))
-        if len(values)>200:
+        if len(values)>100:
             accu2case[key] = values[:int(len(values)*(1-decay_rate))]
     return accu2case
 
