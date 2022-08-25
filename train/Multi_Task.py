@@ -307,9 +307,9 @@ class gru_ljp():
 
                 print(
                     f"Epoch: {int((step + 1) / self.EPOCH)}  Train_loss: {round(train_loss / self.EPOCH, 6)}  Valid_loss: {round(valid_loss, 6)} \n"
-                    f"Charge_Acc: {round(accuracy_score(charge_labels, charge_predictions), 2)}  Charge_MP: {round(precision_score(charge_labels, charge_predictions), 2)}  Charge_MR: {round(recall_score(charge_labels, charge_predictions), 2)}  Charge_F1: {round(f1_score(charge_labels, charge_predictions), 2)}\n"
-                    f"Article_Acc: {round(accuracy_score(article_labels, article_predictions), 2)}  Article_MP: {round(precision_score(article_labels, article_predictions), 2)}  Article_MR: {round(recall_score(article_labels, article_predictions), 2)}  Article_F1: {round(f1_score(article_labels, article_predictions))}\n"
-                    f"Article_Acc: {round(accuracy_score(penalty_labels, penalty_predictions), 2)}  Article_MP: {round(precision_score(penalty_labels, penalty_predictions), 2)}  Article_MR: {round(recall_score(penalty_labels, penalty_predictions), 2)}  Article_F1: {round(f1_score(penalty_labels, penalty_predictions), 2)}\n"
+                    f"Charge_Acc: {round(accuracy_score(charge_labels, charge_predictions), 2)}  Charge_MP: {round(precision_score(charge_labels, charge_predictions, average='macro'), 2)}  Charge_MR: {round(recall_score(charge_labels, charge_predictions, average='macro'), 2)}  Charge_F1: {round(f1_score(charge_labels, charge_predictions,average='macro'), 2)}\n"
+                    f"Article_Acc: {round(accuracy_score(article_labels, article_predictions), 2)}  Article_MP: {round(precision_score(article_labels, article_predictions, average='macro'), 2)}  Article_MR: {round(recall_score(article_labels, article_predictions, average='macro'), 2)}  Article_F1: {round(f1_score(article_labels, article_predictions,average='macro'))}\n"
+                    f"Article_Acc: {round(accuracy_score(penalty_labels, penalty_predictions), 2)}  Article_MP: {round(precision_score(penalty_labels, penalty_predictions, average='macro'), 2)}  Article_MR: {round(recall_score(penalty_labels, penalty_predictions, average='macro'), 2)}  Article_F1: {round(f1_score(penalty_labels, penalty_predictions,average='macro'), 2)}\n"
                     f"Time: {round((end - start) / 60, 2)}min ")
 
                 # 保存模型
