@@ -261,8 +261,7 @@ class gru_ljp():
 
                 train_loss_records.append(train_loss / self.EPOCH)
 
-                valid_loss = valid_loss / val_step * self.BATCH_SIZE
-                valid_loss_records.append(valid_loss)
+                valid_loss_records.append(valid_loss/val_step)
 
                 # acc
                 valid_acc_records['charge'].append(charge_confusMat.get_acc())
@@ -287,9 +286,9 @@ class gru_ljp():
                 end = time.time()
                 print(
                     f"Epoch: {int((step + 1) / self.EPOCH)}  Train_loss: {round(train_loss / self.EPOCH, 6)}  Valid_loss: {round(valid_loss, 6)} \n"
-                    f"Charge_Acc: {round(charge_confusMat.get_acc(), 2)}  Charge_MP: {round(charge_confusMat.getMaP(), 2)}  Charge_MR: {round(charge_confusMat.getMaR(), 2)}  Charge_F1: {round(charge_confusMat.getMaF(), 2)}\n"
-                    f"Article_Acc: {round(article_confusMat.get_acc(), 2)}  Article_MP: {round(article_confusMat.getMaP(), 2)}   Article_MR: {round(article_confusMat.getMaR(), 2)} Article_F1: {round(article_confusMat.getMaF(), 2)}\n"
-                    f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 2)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 2)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 2)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 2)}\n"
+                    f"Charge_Acc: {round(charge_confusMat.get_acc(), 4)}  Charge_MP: {round(charge_confusMat.getMaP(), 4)}  Charge_MR: {round(charge_confusMat.getMaR(), 4)}  Charge_F1: {round(charge_confusMat.getMaF(), 4)}\n"
+                    f"Article_Acc: {round(article_confusMat.get_acc(), 4)}  Article_MP: {round(article_confusMat.getMaP(), 4)}   Article_MR: {round(article_confusMat.getMaR(), 4)} Article_F1: {round(article_confusMat.getMaF(), 4)}\n"
+                    f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 4)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 4)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 4)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 4)}\n"
                     f"Time: {round((end - start) / 60, 2)}min ")
 
 

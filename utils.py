@@ -328,7 +328,7 @@ def data_loader(seq, charge_labels, article_labels, penalty_labels,shuffle, batc
               [penalty_labels[j] for j in ids]
 
 
-def data_loader_cycle(accu2case):
+def data_loader_cycle(accu2case, accu2desc):
     max_length = max([len(cases) for _, cases in accu2case.items()])
     for i in range(max_length):
         samples = [cases[i%len(cases)] for key, cases in accu2case.items()]
