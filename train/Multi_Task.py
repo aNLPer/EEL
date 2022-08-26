@@ -702,7 +702,7 @@ def verify_sim_accu():
 
 def verify_trainset_decay():
     "训练集衰减对模型"
-    decay_rate = [0.6,0.5,0.4,0.3,0.2,0.1]
+    decay_rate = [0.5,0.4,0.3,0.2,0.1]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for rate in decay_rate:
         print(f"\n-----------------------{rate}------------------------\n")
