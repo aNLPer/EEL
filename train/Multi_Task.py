@@ -9,8 +9,7 @@ import numpy as np
 import configparser
 import torch.nn as nn
 import torch.optim as optim
-from models import GRULJP
-from timeit import default_timer as timer
+from models import GRULJP, GRUBase
 from torch.nn.utils.rnn import pad_sequence
 from transformers import get_linear_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, get_cosine_schedule_with_warmup
 from utils import contras_data_loader, train_distloss_fun, penalty_constrain, ConfusionMatrix, prepare_data, data_loader, check_data, Lang, make_accu2case_dataset, load_classifiedAccus, dataset_decay
@@ -92,6 +91,7 @@ class gru_ljp():
         :param ablation: 消融实验：None, lsscl, charge-aware
         :return:
         """
+
         print("load model...")
         self.model = GRULJP(charge_label_size=len(self.lang.index2accu),
                             article_label_size=len(self.lang.index2art),
@@ -686,12 +686,21 @@ class gru_ljp():
             f.write('valid_f1_records\t' + valid_f1_records + "\n")
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
-    def train_wo_lsscl(self, mode="lsscl"):
+    def train_base(self):
         """
         :param mode: ["vanilla", "lsscl", "eval_batch"]
         :return:
         """
-        self.load_model(ablation=mode)
+        self.model = GRUBase(charge_label_size=len(self.lang.index2accu),
+                                article_label_size=len(self.lang.index2art),
+                                penalty_label_size=self.PENALTY_LABEL_SIZE,
+                                voc_size=self.lang.n_words,
+                                dropout=self.DROPOUT_RATE,
+                                num_layers=self.GRU_LAYERS,
+                                hidden_size=self.HIDDEN_SIZE,
+                                pretrained_model=self.pretrained_model,
+                                mode="sum")
+        self.model.to(self.device)
         # 定义损失函数
         self.criterion = nn.CrossEntropyLoss()
 
@@ -746,7 +755,7 @@ class gru_ljp():
                     seqs[i] = torch.tensor(seqs[i])
                 padded_input_ids = pad_sequence(seqs, batch_first=True).to(self.device)
 
-                _, charge_preds, article_preds, penalty_preds = self.model(padded_input_ids, seq_lens)
+                charge_preds, article_preds, penalty_preds = self.model(padded_input_ids, seq_lens)
 
 
                 # 指控分类误差
@@ -840,7 +849,7 @@ class gru_ljp():
                 f"Time: {round((end - start) / 60, 2)}min ")
 
             # 保存模型
-            save_path = f"../dataset/checkpoints/model-at-epoch-{mode}-{self.BATCH_SIZE}-{self.SIM_ACCU_NUM}.pt"
+            save_path = f"../dataset/checkpoints/model-base-at-epoch.pt"
             torch.save(self.model, save_path)
 
             train_loss = 0
@@ -851,7 +860,7 @@ class gru_ljp():
         valid_mp_records = json.dumps(valid_mp_records, ensure_ascii=False)
         valid_f1_records = json.dumps(valid_f1_records, ensure_ascii=False)
         valid_mr_records = json.dumps(valid_mr_records, ensure_ascii=False)
-        with open(f"../training_records_{mode}_{self.BATCH_SIZE}_{self.SIM_ACCU_NUM}.txt", "w", encoding="utf-8") as f:
+        with open(f"../training_records_base.txt", "w", encoding="utf-8") as f:
             f.write('train_loss_records\t' + train_loss_records + "\n")
             f.write('valid_loss_records\t' + valid_loss_records + "\n")
             f.write('valid_acc_records\t' + valid_acc_records + "\n")
