@@ -15,23 +15,14 @@ class BERTBase(nn.Module):
                                               output_hidden_states=False)
 
         self.charge_classifer = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, charge_label_size)
+            nn.Linear(hidden_size, charge_label_size)
         )
 
         self.article_classifer = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, article_label_size)
+            nn.Linear(hidden_size, article_label_size)
         )
         self.penalty_classifer = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, penalty_label_size)
+            nn.Linear(hidden_size, penalty_label_size)
         )
 
     def forward(self, input_ids, attention_mask):

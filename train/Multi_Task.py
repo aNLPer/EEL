@@ -865,7 +865,7 @@ class gru_ljp():
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
     def bertbase_for_ljp(self):
-        self.BATCH_SIZE = 16
+        self.BATCH_SIZE = 12
         tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
 
         # 实例化模型
@@ -898,13 +898,14 @@ class gru_ljp():
                                                                                    train_penalty_labels,
                                                                                    shuffle=True,
                                                                                    batch_size=self.BATCH_SIZE):
+                # batch_start = time.time()
                 optimizer.zero_grad()
                 charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
                 article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
                 penalty_labels = torch.tensor(penalty_labels).to(self.device)
                 seqs = tokenizer.batch_encode_plus(seqs,
                                                    add_special_tokens=False,
-                                                   max_length=512,
+                                                   max_length=400,
                                                    truncation=True,
                                                    padding=True,
                                                    return_attention_mask=True,
@@ -927,10 +928,11 @@ class gru_ljp():
 
                 # 更新学习率
                 scheduler.step()
+                # print(f"process one batch {time.time()-batch_start}")
             train_losses.append(train_loss)
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
 
-            print("评估模型")
+            # print("评估模型")
             # 评估模型
             charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
             article_confusMat = ConfusionMatrix(len(self.lang.index2art))
@@ -941,7 +943,7 @@ class gru_ljp():
                                                                                    val_charge_labels,
                                                                                    val_article_labels,
                                                                                    val_penalty_labels,
-                                                                                   shuffle=True,
+                                                                                   shuffle=False,
                                                                                    batch_size=self.BATCH_SIZE):
 
                 charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
@@ -973,7 +975,7 @@ class gru_ljp():
                 f"Charge_Acc: {round(charge_confusMat.get_acc(), 4)}  Charge_MP: {round(charge_confusMat.getMaP(), 4)}  Charge_MR: {round(charge_confusMat.getMaR(), 4)}  Charge_F1: {round(charge_confusMat.getMaF(), 4)}\n"
                 f"Article_Acc: {round(article_confusMat.get_acc(), 4)}  Article_MP: {round(article_confusMat.getMaP(), 4)}   Article_MR: {round(article_confusMat.getMaR(), 4)} Article_F1: {round(article_confusMat.getMaF(), 4)}\n"
                 f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 4)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 4)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 4)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 4)}\n"
-                f"Time: {round((time.time() - start) / 60, 2)}min ")
+                f"Time: {round((time.time() - start) / 60, 2)}min")
 
 
 def verify_sim_accu():
@@ -1023,7 +1025,7 @@ def veryfy_LSSCL_BERT():
 if __name__=="__main__":
     # train sota
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    plj = gru_ljp(device=device, section="multi-task")
+    plj = gru_ljp(device=device, section="bert-base")
     plj.bertbase_for_ljp()
 
 
