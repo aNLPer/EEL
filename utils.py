@@ -315,7 +315,7 @@ def contras_data_loader(accu2case,
     return seq, accu_labels, article_labels, penalty_labels
 
 
-def data_loader(seq, charge_labels, article_labels, penalty_labels,shuffle, batch_size):
+def data_loader(seq, charge_labels, article_labels, penalty_labels, shuffle, batch_size):
     num_examples = len(seq)
     indices = list(range(num_examples))
     if shuffle:
@@ -327,7 +327,6 @@ def data_loader(seq, charge_labels, article_labels, penalty_labels,shuffle, batc
               [article_labels[j] for j in ids], \
               [penalty_labels[j] for j in ids]
 
-
 def data_loader_cycle(accu2case, accu2desc):
     max_length = max([len(cases) for _, cases in accu2case.items()])
     for i in range(max_length):
@@ -336,6 +335,21 @@ def data_loader_cycle(accu2case, accu2desc):
               [sample[1] for sample in samples], \
               [sample[2] for sample in samples], \
               [sample[3] for sample in samples],
+
+def data_loader_forBert(file_path):
+    seqs = []
+    c_labels = []
+    a_labels = []
+    p_labels = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            item = json.loads(line)
+            seqs.append(item[0])
+            c_labels.append(item[1])
+            a_labels.append(item[2])
+            p_labels.append(item[3])
+    return seqs, c_labels, a_labels, p_labels
+
 
 
 def load_accu2desc(file_path, pretrained_vec=None):

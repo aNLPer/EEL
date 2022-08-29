@@ -13,7 +13,7 @@ from models import GRULJP, GRUBase
 from torch.nn.utils.rnn import pad_sequence
 from transformers import get_linear_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, get_cosine_schedule_with_warmup
 from utils import contras_data_loader, train_distloss_fun, penalty_constrain, ConfusionMatrix, prepare_data, data_loader, check_data, Lang, make_accu2case_dataset, load_classifiedAccus, dataset_decay
-from sklearn.metrics import accuracy_score, recall_score, f1_score, precision_score
+from transformers import BertModel, BertTokenizer
 
 class gru_ljp():
     def __init__(self, device, section):
@@ -864,6 +864,18 @@ class gru_ljp():
             f.write('valid_f1_records\t' + valid_f1_records + "\n")
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
+    def bertbase_for_ljp(self):
+        seqs, charge_labels, article_labels, penalty_labels = utils.data_loader_forBert(self.train_data_path)
+        for seqs, charge_labels, article_labels, penalty_labels in data_loader(seqs,
+                                                                               charge_labels,
+                                                                               article_labels,
+                                                                               penalty_labels,
+                                                                               shuffle=True,
+                                                                               batch_size=self.BATCH_SIZE):
+            charge_labels = [self.lang.accu2index[l] for l in charge_labels]
+            article_labels = [self.lang.art2index[l] for l in article_labels]
+
+            print("test")
 
 def verify_sim_accu():
     "验证SIM_ACCU_NUM对模型的影响"
@@ -913,7 +925,7 @@ if __name__=="__main__":
     # train sota
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     plj = gru_ljp(device=device, section="multi-task")
-    plj.train_base()
+    plj.bertbase_for_ljp()
 
 
     # "训练集衰减对模型影响"

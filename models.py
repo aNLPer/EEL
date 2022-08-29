@@ -7,9 +7,9 @@ from transformers import BertModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class Bert(nn.Module):
+class BERTBase(nn.Module):
     def __init__(self, hidden_size, label_size):
-        super(Bert, self).__init__()
+        super(BERTBase, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-chinese",
                                               num_labels=label_size,
                                               output_attentions=False,
