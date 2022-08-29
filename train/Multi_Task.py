@@ -698,7 +698,6 @@ class gru_ljp():
                                 dropout=self.DROPOUT_RATE,
                                 num_layers=self.GRU_LAYERS,
                                 hidden_size=self.HIDDEN_SIZE,
-                                pretrained_model=self.pretrained_model,
                                 mode="sum")
         self.model.to(self.device)
         # 定义损失函数
@@ -712,9 +711,6 @@ class gru_ljp():
         # optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=0.05)
         optimizer = optim.AdamW([{"params": self.model.em.parameters(), 'lr': 0.00001},
                                  {"params": self.model.enc.parameters(), 'weight_decay': 0.07},
-                                 {"params": self.model.chargeAwareAtten.parameters(), 'weight_decay': 0.07},
-                                 {'params': self.model.articleAwareAtten.parameters(), 'weight_decay': 0.07},
-                                 {"params": self.model.chargeLinear.parameters()},
                                  {'params': self.model.chargePreds.parameters()},
                                  {'params': self.model.articlePreds.parameters()},
                                  {'params': self.model.penaltyPreds.parameters()}
@@ -804,7 +800,7 @@ class gru_ljp():
                 val_input_ids = [torch.tensor(s) for s in val_seq]
                 val_input_ids = pad_sequence(val_input_ids, batch_first=True).to(self.device)
                 with torch.no_grad():
-                    _, val_charge_preds, val_article_preds, val_penalty_preds = self.model(val_input_ids,
+                    val_charge_preds, val_article_preds, val_penalty_preds = self.model(val_input_ids,
                                                                                                     val_seq_lens)
                     val_charge_preds_loss = self.criterion(val_charge_preds, torch.tensor(val_charge_label).to(self.device))
                     val_article_preds_loss = self.criterion(val_article_preds,
@@ -915,9 +911,9 @@ def veryfy_LSSCL_BERT():
 
 if __name__=="__main__":
     # train sota
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # plj = gru_ljp(device=device, section="multi-task")
-    # plj.train()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    plj = gru_ljp(device=device, section="multi-task")
+    plj.train_base()
 
 
     # "训练集衰减对模型影响"
@@ -930,7 +926,7 @@ if __name__=="__main__":
     # verify_LSSCL()
 
     # "验证charge_aware对模型的影响"
-    verify_chargeAware()
+    # verify_chargeAware()
 
     # 验证charge-aware-attention对模型的影响
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
