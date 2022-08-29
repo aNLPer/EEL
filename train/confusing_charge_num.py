@@ -45,14 +45,15 @@ y_penalty_f1 = np.array([30.76, 31.74, 35.27, 34.51])
 # 绘制article 图
 fig = plt.figure()
 ax = plt.axes()
-
+# plt.grid(color='w', linestyle='solid', )
+ax.patch.set_facecolor('#E0F4FD')
 plt.title("Article Prediction")
 plt.xlabel("confusing charge number")
-ax.plot(x, y_article_acc, "-^", label="Acc")
-ax.plot(x, y_article_mp, "-o", label="MP")
-ax.plot(x, y_article_mr, "-s", label="MR")
-ax.plot(x, y_article_f1, "-x", label="F1")
-plt.axis('equal')
+ax.plot(x, y_article_acc/100, "-^", label="Acc")
+ax.plot(x, y_article_mp/100, "-o", label="MP")
+ax.plot(x, y_article_mr/100, "-s", label="MR")
+ax.plot(x, y_article_f1/100, "-x", label="F1")
+# plt.axis('equal')
 plt.legend()
 
 
