@@ -8,37 +8,44 @@ from transformers import BertModel
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class BERTBase(nn.Module):
-    def __init__(self, hidden_size, label_size):
+    def __init__(self, charge_label_size, article_label_size, penalty_label_size, hidden_size=768):
         super(BERTBase, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-chinese",
-                                              num_labels=label_size,
                                               output_attentions=False,
-                                              output_hidden_states=True)
+                                              output_hidden_states=False)
 
-        self.contraLinear = nn.Sequential(
-            nn.Linear(hidden_size, 4 * hidden_size),
-            nn.BatchNorm1d(4 * hidden_size),
-            nn.ReLU(),
-            nn.Linear(4 * hidden_size, hidden_size)
-        )
-
-        self.classifyLinear = nn.Sequential(
+        self.charge_classifer = nn.Sequential(
             nn.Linear(hidden_size, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Linear(256, label_size)
+            nn.Linear(256, charge_label_size)
+        )
+
+        self.article_classifer = nn.Sequential(
+            nn.Linear(hidden_size, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, article_label_size)
+        )
+        self.penalty_classifer = nn.Sequential(
+            nn.Linear(hidden_size, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, penalty_label_size)
         )
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         # [batch_size, seq_length, hidden_size] -> [batch_size, hidden_size]
         hidden_state = torch.mean(outputs.last_hidden_state, dim=1)
-        # [batch_size, hidden_size] -> [batch_size, hidden_size]
-        contra_hidden = self.contraLinear(hidden_state)
-        # [batch_size, hidden_size] -> [batch_size, label_size]
-        classify_preds = self.classifyLinear(contra_hidden)
-        # [batch_size, hidden_size]、[batch_size, label_size]
-        return contra_hidden, classify_preds
+        # [batch_size, charge_label_size]
+        charge_preds = self.charge_classifer(hidden_state)
+        # [batch_size, article_label_size]
+        article_preds = self.article_classifer(hidden_state)
+        # [batch_size, penalty_label_size]
+        penalty_preds = self.penalty_classifer(hidden_state)
+
+        return charge_preds, article_preds, penalty_preds
 
 class BERTLJP(nn.Module):
     def __init__(self,

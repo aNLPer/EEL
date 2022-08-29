@@ -9,7 +9,7 @@ import numpy as np
 import configparser
 import torch.nn as nn
 import torch.optim as optim
-from models import GRULJP, GRUBase
+from models import GRULJP, GRUBase,BERTBase
 from torch.nn.utils.rnn import pad_sequence
 from transformers import get_linear_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, get_cosine_schedule_with_warmup
 from utils import contras_data_loader, train_distloss_fun, penalty_constrain, ConfusionMatrix, prepare_data, data_loader, check_data, Lang, make_accu2case_dataset, load_classifiedAccus, dataset_decay
@@ -865,6 +865,24 @@ class gru_ljp():
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
     def bertbase_for_ljp(self):
+        tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+
+        # 实例化模型
+        self.model = BERTBase(len(self.lang.index2accu), len(self.lang.index2art), self.PENALTY_LABEL_SIZE)
+        self.model.to(device)
+        # 定义损失函数
+        criterion = nn.CrossEntropyLoss()
+
+        # 定义优化器 AdamW由Transfomer提供,目前看来表现很好
+        optimizer = optim.AdamW(self.model.parameters(),
+                          lr=self.LR,
+                          eps=1e-8)
+
+        # 学习率优化策略
+        scheduler = get_linear_schedule_with_warmup(optimizer,
+                                                    num_warmup_steps=500,  # Default value in run_glue.py
+                                                    num_training_steps=self.STEP)
+
         seqs, charge_labels, article_labels, penalty_labels = utils.data_loader_forBert(self.train_data_path)
         for seqs, charge_labels, article_labels, penalty_labels in data_loader(seqs,
                                                                                charge_labels,
@@ -872,10 +890,27 @@ class gru_ljp():
                                                                                penalty_labels,
                                                                                shuffle=True,
                                                                                batch_size=self.BATCH_SIZE):
-            charge_labels = [self.lang.accu2index[l] for l in charge_labels]
-            article_labels = [self.lang.art2index[l] for l in article_labels]
+            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels])
+            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels])
+            penalty_labels = torch.tensor(penalty_labels)
+            seqs = tokenizer.batch_encode_plus(seqs,
+                                               add_special_tokens=False,
+                                               max_length=512,
+                                               truncation=True,
+                                               padding=True,
+                                               return_attention_mask=True,
+                                               return_tensors='pt')
+            charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"], seqs["attention_mask"])
+            # 计算损失
+            charge_loss = criterion(charge_preds, charge_labels)
+            article_loss = criterion(article_preds, article_labels)
+            penalty_loss = criterion(penalty_preds, penalty_labels)
+            loss = charge_loss + article_loss + penalty_loss
 
-            print("test")
+            loss.backward()
+
+
+
 
 def verify_sim_accu():
     "验证SIM_ACCU_NUM对模型的影响"
