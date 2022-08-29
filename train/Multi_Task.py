@@ -865,6 +865,7 @@ class gru_ljp():
             f.write('valid_mr_records\t' + valid_mr_records + "\n")
 
     def bertbase_for_ljp(self):
+        self.BATCH_SIZE = 16
         tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
 
         # 实例化模型
@@ -883,79 +884,97 @@ class gru_ljp():
         scheduler = get_linear_schedule_with_warmup(optimizer,
                                                     num_warmup_steps=500,  # Default value in run_glue.py
                                                     num_training_steps=self.STEP)
-
-        train_seqs, train_charge_labels, train_article_labels, train_penalty_labels = utils.data_loader_forBert(self.train_data_path)
-        for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
-                                                                               train_charge_labels,
-                                                                               train_article_labels,
-                                                                               train_penalty_labels,
-                                                                               shuffle=True,
-                                                                               batch_size=16):
-            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
-            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
-            penalty_labels = torch.tensor(penalty_labels).to(self.device)
-            seqs = tokenizer.batch_encode_plus(seqs,
-                                               add_special_tokens=False,
-                                               max_length=512,
-                                               truncation=True,
-                                               padding=True,
-                                               return_attention_mask=True,
-                                               return_tensors='pt')
-            charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"].to(self.device), seqs["attention_mask"].to(self.device))
-            # 计算损失
-            charge_loss = criterion(charge_preds, charge_labels)
-            article_loss = criterion(article_preds, article_labels)
-            penalty_loss = criterion(penalty_preds, penalty_labels)
-            loss = charge_loss + article_loss + penalty_loss
-
-            loss.backward()
-
-            # 梯度裁剪防止梯度爆炸
-            nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-
-            # 更新梯度
-            optimizer.step()
-
-            # 更新学习率
-            scheduler.step()
-
-        self.model.eval()
-        val_seqs, val_charge_labels, val_article_labels, val_penalty_labels = utils.data_loader_forBert(self.valid_data_path)
-        for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
-                                                                               val_charge_labels,
-                                                                               val_article_labels,
-                                                                               val_penalty_labels,
-                                                                               shuffle=True,
-                                                                               batch_size=16):
-
-            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
-            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
-            penalty_labels = torch.tensor(penalty_labels).to(self.device)
-            seqs = tokenizer.batch_encode_plus(seqs,
-                                               add_special_tokens=False,
-                                               max_length=512,
-                                               truncation=True,
-                                               padding=True,
-                                               return_attention_mask=True,
-                                               return_tensors='pt')
-            with torch.no_grad():
+        train_losses = []
+        valid_losses = []
+        train_loss = 0
+        valid_loss = 0
+        for epoch in range(30):
+            start = time.time()
+            train_seqs, train_charge_labels, train_article_labels, train_penalty_labels = utils.data_loader_forBert(self.train_data_path)
+            for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
+                                                                                   train_charge_labels,
+                                                                                   train_article_labels,
+                                                                                   train_penalty_labels,
+                                                                                   shuffle=True,
+                                                                                   batch_size=self.BATCH_SIZE):
+                optimizer.zero_grad()
+                charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
+                article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
+                penalty_labels = torch.tensor(penalty_labels).to(self.device)
+                seqs = tokenizer.batch_encode_plus(seqs,
+                                                   add_special_tokens=False,
+                                                   max_length=512,
+                                                   truncation=True,
+                                                   padding=True,
+                                                   return_attention_mask=True,
+                                                   return_tensors='pt')
                 charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"].to(self.device), seqs["attention_mask"].to(self.device))
-            # 计算损失
-            charge_loss = criterion(charge_preds, charge_labels)
-            article_loss = criterion(article_preds, article_labels)
-            penalty_loss = criterion(penalty_preds, penalty_labels)
-            loss = charge_loss + article_loss + penalty_loss
+                # 计算损失
+                charge_loss = criterion(charge_preds, charge_labels)
+                article_loss = criterion(article_preds, article_labels)
+                penalty_loss = criterion(penalty_preds, penalty_labels)
+                loss = charge_loss + article_loss + penalty_loss
+                train_loss+=loss.item()/self.BATCH_SIZE
 
-            loss.backward()
+                loss.backward()
 
-            # 梯度裁剪防止梯度爆炸
-            nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                # 梯度裁剪防止梯度爆炸
+                nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
-            # 更新梯度
-            optimizer.step()
+                # 更新梯度
+                optimizer.step()
 
-            # 更新学习率
-            scheduler.step()
+                # 更新学习率
+                scheduler.step()
+            train_losses.append(train_loss)
+
+            # 评估模型
+            charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
+            article_confusMat = ConfusionMatrix(len(self.lang.index2art))
+            penalty_confusMat = ConfusionMatrix(self.PENALTY_LABEL_SIZE)
+            self.model.eval()
+            val_seqs, val_charge_labels, val_article_labels, val_penalty_labels = utils.data_loader_forBert(self.valid_data_path)
+            for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
+                                                                                   val_charge_labels,
+                                                                                   val_article_labels,
+                                                                                   val_penalty_labels,
+                                                                                   shuffle=True,
+                                                                                   batch_size=16):
+
+                charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
+                article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
+                penalty_labels = torch.tensor(penalty_labels).to(self.device)
+                seqs = tokenizer.batch_encode_plus(seqs,
+                                                   add_special_tokens=False,
+                                                   max_length=512,
+                                                   truncation=True,
+                                                   padding=True,
+                                                   return_attention_mask=True,
+                                                   return_tensors='pt')
+
+                with torch.no_grad():
+                    charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"].to(self.device), seqs["attention_mask"].to(self.device))
+                    # 计算
+                    charge_loss = criterion(charge_preds.cpu(), charge_labels.cpu())
+                    article_loss = criterion(article_preds.cpu(), article_labels.cpu())
+                    penalty_loss = criterion(penalty_preds.cpu(), penalty_labels.cpu())
+                    loss = charge_loss + article_loss + penalty_loss
+                    valid_loss+=loss.item()/self.BATCH_SIZE
+                charge_confusMat.updateMat(charge_preds.cpu().numpy(), charge_labels.cpu().numpy())
+                article_confusMat.updateMat(article_preds.cpu().numpy(), article_labels.cpu().numpy())
+                penalty_confusMat.updateMat(penalty_preds.cpu().numpy(), penalty_labels.cpu().numpy())
+            valid_losses.append(valid_loss)
+
+            print(
+                f"Epoch: {int(epoch + 1)}  Train_loss: {round(train_losses[-1], 4)}  Valid_loss: {round(valid_losses[-1], 4)} \n"
+                f"Charge_Acc: {round(charge_confusMat.get_acc(), 4)}  Charge_MP: {round(charge_confusMat.getMaP(), 4)}  Charge_MR: {round(charge_confusMat.getMaR(), 4)}  Charge_F1: {round(charge_confusMat.getMaF(), 4)}\n"
+                f"Article_Acc: {round(article_confusMat.get_acc(), 4)}  Article_MP: {round(article_confusMat.getMaP(), 4)}   Article_MR: {round(article_confusMat.getMaR(), 4)} Article_F1: {round(article_confusMat.getMaF(), 4)}\n"
+                f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 4)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 4)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 4)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 4)}\n"
+                f"Time: {round((time.time() - start) / 60, 2)}min ")
+
+
+
+
 
 def verify_sim_accu():
     "验证SIM_ACCU_NUM对模型的影响"
