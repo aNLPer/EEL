@@ -869,7 +869,8 @@ class gru_ljp():
 
         # 实例化模型
         self.model = BERTBase(len(self.lang.index2accu), len(self.lang.index2art), self.PENALTY_LABEL_SIZE)
-        self.model.to(device)
+        self.model.to(self.device)
+        self.model.train()
         # 定义损失函数
         criterion = nn.CrossEntropyLoss()
 
@@ -883,16 +884,16 @@ class gru_ljp():
                                                     num_warmup_steps=500,  # Default value in run_glue.py
                                                     num_training_steps=self.STEP)
 
-        seqs, charge_labels, article_labels, penalty_labels = utils.data_loader_forBert(self.train_data_path)
-        for seqs, charge_labels, article_labels, penalty_labels in data_loader(seqs,
-                                                                               charge_labels,
-                                                                               article_labels,
-                                                                               penalty_labels,
+        train_seqs, train_charge_labels, train_article_labels, train_penalty_labels = utils.data_loader_forBert(self.train_data_path)
+        for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
+                                                                               train_charge_labels,
+                                                                               train_article_labels,
+                                                                               train_penalty_labels,
                                                                                shuffle=True,
-                                                                               batch_size=self.BATCH_SIZE):
-            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels])
-            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels])
-            penalty_labels = torch.tensor(penalty_labels)
+                                                                               batch_size=16):
+            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
+            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
+            penalty_labels = torch.tensor(penalty_labels).to(self.device)
             seqs = tokenizer.batch_encode_plus(seqs,
                                                add_special_tokens=False,
                                                max_length=512,
@@ -900,7 +901,7 @@ class gru_ljp():
                                                padding=True,
                                                return_attention_mask=True,
                                                return_tensors='pt')
-            charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"], seqs["attention_mask"])
+            charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"].to(self.device), seqs["attention_mask"].to(self.device))
             # 计算损失
             charge_loss = criterion(charge_preds, charge_labels)
             article_loss = criterion(article_preds, article_labels)
@@ -918,6 +919,43 @@ class gru_ljp():
             # 更新学习率
             scheduler.step()
 
+        self.model.eval()
+        val_seqs, val_charge_labels, val_article_labels, val_penalty_labels = utils.data_loader_forBert(self.valid_data_path)
+        for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
+                                                                               val_charge_labels,
+                                                                               val_article_labels,
+                                                                               val_penalty_labels,
+                                                                               shuffle=True,
+                                                                               batch_size=16):
+
+            charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
+            article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
+            penalty_labels = torch.tensor(penalty_labels).to(self.device)
+            seqs = tokenizer.batch_encode_plus(seqs,
+                                               add_special_tokens=False,
+                                               max_length=512,
+                                               truncation=True,
+                                               padding=True,
+                                               return_attention_mask=True,
+                                               return_tensors='pt')
+            with torch.no_grad():
+                charge_preds, article_preds, penalty_preds = self.model(seqs["input_ids"].to(self.device), seqs["attention_mask"].to(self.device))
+            # 计算损失
+            charge_loss = criterion(charge_preds, charge_labels)
+            article_loss = criterion(article_preds, article_labels)
+            penalty_loss = criterion(penalty_preds, penalty_labels)
+            loss = charge_loss + article_loss + penalty_loss
+
+            loss.backward()
+
+            # 梯度裁剪防止梯度爆炸
+            nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+
+            # 更新梯度
+            optimizer.step()
+
+            # 更新学习率
+            scheduler.step()
 
 def verify_sim_accu():
     "验证SIM_ACCU_NUM对模型的影响"
