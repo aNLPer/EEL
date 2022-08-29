@@ -871,7 +871,7 @@ class gru_ljp():
         # 实例化模型
         self.model = BERTBase(len(self.lang.index2accu), len(self.lang.index2art), self.PENALTY_LABEL_SIZE)
         self.model.to(self.device)
-        self.model.train()
+
         # 定义损失函数
         criterion = nn.CrossEntropyLoss()
 
@@ -890,6 +890,7 @@ class gru_ljp():
         valid_loss = 0
         for epoch in range(30):
             start = time.time()
+            self.model.train()
             train_seqs, train_charge_labels, train_article_labels, train_penalty_labels = utils.data_loader_forBert(self.train_data_path)
             for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
                                                                                    train_charge_labels,
@@ -927,19 +928,21 @@ class gru_ljp():
                 # 更新学习率
                 scheduler.step()
             train_losses.append(train_loss)
+            torch.cuda.empty_cache()
 
+            print("评估模型")
             # 评估模型
             charge_confusMat = ConfusionMatrix(len(self.lang.index2accu))
             article_confusMat = ConfusionMatrix(len(self.lang.index2art))
             penalty_confusMat = ConfusionMatrix(self.PENALTY_LABEL_SIZE)
             self.model.eval()
             val_seqs, val_charge_labels, val_article_labels, val_penalty_labels = utils.data_loader_forBert(self.valid_data_path)
-            for seqs, charge_labels, article_labels, penalty_labels in data_loader(train_seqs,
+            for seqs, charge_labels, article_labels, penalty_labels in data_loader(val_seqs,
                                                                                    val_charge_labels,
                                                                                    val_article_labels,
                                                                                    val_penalty_labels,
                                                                                    shuffle=True,
-                                                                                   batch_size=16):
+                                                                                   batch_size=self.BATCH_SIZE):
 
                 charge_labels = torch.tensor([self.lang.accu2index[l] for l in charge_labels]).to(self.device)
                 article_labels = torch.tensor([self.lang.art2index[l] for l in article_labels]).to(self.device)
@@ -971,9 +974,6 @@ class gru_ljp():
                 f"Article_Acc: {round(article_confusMat.get_acc(), 4)}  Article_MP: {round(article_confusMat.getMaP(), 4)}   Article_MR: {round(article_confusMat.getMaR(), 4)} Article_F1: {round(article_confusMat.getMaF(), 4)}\n"
                 f"Penalty_Acc: {round(penalty_confusMat.get_acc(), 4)}  Penalty_MP: {round(penalty_confusMat.getMaP(), 4)}  Penalty_MR: {round(penalty_confusMat.getMaR(), 4)}  Penalty_F1: {round(penalty_confusMat.getMaF(), 4)}\n"
                 f"Time: {round((time.time() - start) / 60, 2)}min ")
-
-
-
 
 
 def verify_sim_accu():
