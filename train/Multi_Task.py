@@ -909,7 +909,14 @@ class gru_ljp():
 
             loss.backward()
 
+            # 梯度裁剪防止梯度爆炸
+            nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
+            # 更新梯度
+            optimizer.step()
+
+            # 更新学习率
+            scheduler.step()
 
 
 def verify_sim_accu():
